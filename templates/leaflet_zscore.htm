@@ -1,0 +1,2462 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Performance Monitoring</title>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+	<link rel="stylesheet" href="../css/leaflet.css" />
+
+	<style>
+		body, table, td, div, span {font-family: Roboto,Arial; font-size:13px;}
+		#map1 {
+			width: 780px;
+			height: 700px;
+			background-Color:#ffffff;
+			border:1px solid #e5e5e5;
+		    -webkit-border-radius: 4px 4px 4px 4px;
+		    -moz-border-radius: 4px 4px 4px 4px;
+		    border-radius: 4px 4px 4px 4px;
+		}
+		#summary1 {
+			width: 348px;
+			height: 150px;
+			background-Color:#ffffff;
+			border:1px solid #e5e5e5;
+		    -webkit-border-radius: 4px 4px 4px 4px;
+		    -moz-border-radius: 4px 4px 4px 4px;
+		    border-radius: 4px 4px 4px 4px;
+		}
+		#summary2 {
+			width: 348px;
+			height: 544px;
+			background-Color:#ffffff;
+			border:1px solid #e5e5e5;
+		    -webkit-border-radius: 4px 4px 4px 4px;
+		    -moz-border-radius: 4px 4px 4px 4px;
+		    border-radius: 4px 4px 4px 4px;
+		}
+		#summary3 {
+			background-Color:#ffffff;
+			width: 100%;
+		}
+		#downloadOptions {
+			margin: 15px;
+			text-align:center;
+		}
+		td {
+			vertical-align:top;
+			border: 0;
+		}
+		.info {
+			padding: 6px 8px;
+			font: 12px Arial, Helvetica, sans-serif;
+			background: white;
+			background: rgba(255,255,255,0.8);
+			box-shadow: 0 0 15px rgba(0,0,0,0.2);
+			border-radius: 5px;
+		}
+		.info h4 {
+			margin: 0 0 5px;
+			color: #777;
+		}
+
+		.legend {
+			text-align: left;
+			line-height: 18px;
+			color: #555;
+			background-Color:#ffffff;
+		}
+		.legend i {
+			width: 18px;
+			height: 18px;
+			float: left;
+			margin-right: 8px;
+			opacity: 0.7;
+		}
+		.rounded{
+			border:1px solid #ff;
+		    -webkit-border-radius: 4px 4px 4px 4px;
+		    -moz-border-radius: 4px 4px 4px 4px;
+		    border-radius: 4px 4px 4px 4px;
+		}
+		img{
+			border:0px;
+		}
+		@media print {
+			.noprint {
+				display: none;
+			}
+		}
+	</style>
+
+	<script src="../js/leaflet.js"></script>
+	<!-- <script src="../js/leaflet-heat.js"></script> -->
+	<script src="../js/jquery-1.11.3.min.js"></script>
+	<script src="../js/GregAnalytics.js"></script>
+	<script src="../js/ext-all.js"></script>
+
+	<script type="text/javascript">
+
+	var g_Dest = 'https://za.dhis.dhmis.org/staging';
+	var g_dpk = 'R3JlZ19Sb3dsZXM6R3JlZ29yeUAy';
+
+	var g_prtcl = (window.location.origin).split('://')[0];
+	var g_PGurl = 'e5933d91.ngrok.io';
+	var g_SvrName = '', g_SvrV = '';
+
+	var highlightName = '';
+	var rpUID;
+	var OUid = '';
+	var OUlevel = '';
+	var OUname = '';
+	var peFilter = '';
+	var peMM = '';
+	var OUoutputLevel = '';
+	var g_dxUID = '';
+	var g_dxName;
+	var dxShortName;
+	var dxDescription;
+	var dxGroup = '';
+	var indAnnualized;
+	var dxTypeName;
+	var indicatorTypeFactor;
+	var numerator;
+	var numeratorDescription;
+	var denominator;
+	var denominatorDescription;
+	var iRank = '';
+	var iGrowthSentiment;
+	var ValueRange = '';
+	var AbsMin = -99999999999999999999;
+	var AbsMax = 99999999999999999999;
+	var bGeometryPointsExist = 0;
+
+	var gsScheme = '';
+	var g_RegAvg;
+	var g_iStDev;
+	var iMean;
+	var iVariance;
+	var iMode;
+	var iMedian;
+	var LegendGrades = [];
+	var LegendRangeTestValues = [];
+	var LegendCols = [];
+	var iScaleAbsLow;
+	var iScaleAbsHigh;
+	var Nums = '';
+	var Denoms = '';
+	var sOUitems = '';
+	var iValueRangeAccepted = 0;
+	var iCalcNewScore = 0;
+
+    // util
+    var util = {
+        support: {},
+        geojson: {}
+    };
+
+        // support
+    util.support.sort = function(array, direction, key, emptyFirst) {
+        // supports [number], [string], [{key: number}], [{key: string}], [[string]], [[number]]
+
+        if (!util.array.getLength(array, true)) {
+            return;
+        }
+
+        key = !!key || Ext.isNumber(key) ? key : 'name';
+
+        array.sort( function(a, b) {
+
+            // if object, get the property values
+            if (Ext.isObject(a) && Ext.isObject(b)) {
+                a = a[key];
+                b = b[key];
+            }
+
+            // if array, get from the right index
+            if (Ext.isArray(a) && Ext.isArray(b)) {
+                a = a[key];
+                b = b[key];
+            }
+
+            // string
+            if (Ext.isString(a) && Ext.isString(b)) {
+                a = a.toLowerCase();
+                b = b.toLowerCase();
+
+                if (direction === 'DESC') {
+                    return a < b ? 1 : (a > b ? -1 : 0);
+                }
+                else {
+                    return a < b ? -1 : (a > b ? 1 : 0);
+                }
+            }
+            // number
+            else if (Ext.isNumber(a) && Ext.isNumber(b)) {
+                return direction === 'DESC' ? b - a : a - b;
+            }
+
+            else if (a === undefined || a === null) {
+                return emptyFirst ? -1 : 1;
+            }
+
+            else if (b === undefined || b === null) {
+                return emptyFirst ? 1 : -1;
+            }
+
+            return -1;
+        });
+
+        return array;
+    };    
+
+        // geojson        
+    util.geojson.decode = function(geoFeatures, levelOrder) {
+        var geojson = {
+            type: 'FeatureCollection',
+            crs: {
+                type: 'EPSG',
+                properties: {
+                    code: '4326'
+                }
+            },
+            features: []
+        };
+
+        levelOrder = levelOrder || 'ASC';
+
+        // sort
+        //util.array.sort(geoFeatures, levelOrder, 'le');
+
+        for (var i = 0, ou, gpid = '', gppg = ''; i < geoFeatures.length; i++) {
+            ou = geoFeatures[i];
+
+            // grand parent
+            if (Ext.isString(ou.pg) && ou.pg.length) {
+                var ids = Ext.Array.clean(ou.pg.split('/'));
+
+                // grand parent id
+                if (ids.length >= 2) {
+                    gpid = ids[ids.length - 2];
+                }
+
+                // grand parent parentgraph
+                if (ids.length > 2) {
+                    gppg = '/' + ids.slice(0, ids.length - 2).join('/');
+                }
+            }
+
+            geojson.features.push({
+                type: 'Feature',
+                geometry: {
+                    type: parseInt(ou.ty) === 1 ? 'Point' : 'MultiPolygon',
+                    coordinates: JSON.parse(ou.co)
+                },
+                properties: {
+                    id: ou.id,
+                    name: ou.na,
+                    hasCoordinatesDown: ou.hcd,
+                    hasCoordinatesUp: ou.hcu,
+                    level: ou.le,
+                    grandParentParentGraph: gppg,
+                    grandParentId: gpid,
+                    parentGraph: ou.pg,
+                    parentId: ou.pi,
+                    parentName: ou.pn,
+					value: '',
+					numerator: '',
+					denominator: ''
+                }
+            });
+        }
+
+        return geojson;
+    };
+
+	rpUID = getParameterByName('uid');
+	OUid = getParameterByName('ou');
+	g_dxUID = getParameterByName('dx');
+	peFilter = getParameterByName('pe');
+	OUoutputLevel = getParameterByName('oulevel');
+	OUname = getParameterByName('pname');
+	iRank = getParameterByName('rank');
+	g_iStDev = getParameterByName('pstd');
+	g_RegAvg = getParameterByName('dxval');
+	ValueRange = getParameterByName('vr');
+	gsScheme = getParameterByName('gs');
+	sc = getParameterByName('source');
+
+	if (OUid == ''){
+		OUid = 'JLA7wl59oN3'; 
+	}
+
+	if (g_dxUID == ''){
+		g_dxUID = 'eo2N8j1S9k4'; // Antenatal client HIV 1st test positive rate
+	}
+
+	if (peFilter == ''){
+		var d = new Date();
+		peFilter = d.getFullYear();
+	}
+
+	if (OUname == ''){
+		OUname = 'name of orgunit'; //orgUnit.name;
+	}
+
+	if (iRank == ''){
+		iRank = 'default';
+	}
+
+	if (ValueRange.length > 0){
+		var ArrTmp = [];
+		ArrTmp  = ValueRange.split(";");
+		if ((ArrTmp[0]).length > 0){
+			AbsMin = parseFloat(ArrTmp[0]);
+		}
+		if ((ArrTmp[1]).length > 0){
+			AbsMax = parseFloat(ArrTmp[1]);
+		}
+		iCalcNewScore = getParameterByName('recalc');
+		if (iCalcNewScore == ''){
+			iCalcNewScore = 1;
+		}
+	}
+
+	//var ouObj = '../api/organisationUnits/' + OUid + '.json';
+	var ouObj = g_Dest + '/api/organisationUnits.json?filter=id:in:[' + OUid.replace(";",",") + ']&fields=name,level';
+	var ouObjJ = $.ajax({url:ouObj,headers: { "Authorization": 'Basic ' + g_dpk}, async: false}).responseText;
+	var ouObjJSON = JSON.parse(ouObjJ);
+
+	//OUlevel = ouObjJSON.level;
+	OUlevel = ouObjJSON.organisationUnits[0].level;
+
+	if (OUoutputLevel == ''){
+		OUoutputLevel = (OUlevel+1);
+	}
+
+	var OUlevelLookup = g_Dest + '/api/organisationUnitLevels.json?fields=id,name,level&paging=false';
+	OUlevelJ = $.ajax({url:OUlevelLookup,headers: { "Authorization": 'Basic ' + g_dpk}, async: false}).responseText; 
+	var objLevels = JSON.parse(OUlevelJ);
+	var OUlevelArr = GetOUlevelNames(objLevels);
+	var iGTnum = 0;
+	var iGTden = 0;
+
+$(document).ready(
+
+	function() {
+	
+	var dxAPI = g_prtcl + '://' + g_PGurl + '/instance?&uid=eq.' + sc + '&select=instanceid,uid,name,address,master,active,type,instanceresource{*},instanceaccess{*},instancesetting{*},instancetype{instancetypeid,name}&order=master.desc,name.asc';
+
+	 $.ajax({
+		url: dxAPI,
+		error: function (xhr, ajaxOptions, thrownError) {
+			console.log('Unable to start up application: API services (instance{*}) unavailable at location [' + dxAPI + ']');
+		},
+		success : function(dataInstances){
+		
+			g_SvrName = dataInstances[0].name;
+			//g_SvrV = dataInstances[0].
+
+			g_dpk = dataInstances[0].instanceaccess[0].value;
+			g_Dest = dataInstances[0].address;
+
+			// ##HARDCODED TEST!!! <> good
+			if (OUoutputLevel == 5) {
+				var sJdata = g_Dest + '/api/geoFeatures.json?ou=ou:LEVEL-' + OUoutputLevel + ';LEVEL-' + OUlevel + ';' + OUid;
+			}
+			else
+			{
+				var sJdata = g_Dest + '/api/geoFeatures.json?ou=ou:LEVEL-' + OUoutputLevel + ';' + OUid;
+			}
+
+			$.ajax({
+				url: sJdata,headers: { "Authorization": 'Basic ' + g_dpk},
+				success: function(data) {
+					Output(util.geojson.decode(data), 'map1');
+				}
+			});
+
+			function Output(geoFeatures,DestID){
+
+				var x1;
+				var y1;
+				var x2;
+				var y2;
+				var iLookup = 0;
+				var iRangeMin = 100;
+				var iRangeMax = 0;
+				var iCounter;
+				var dxElements;
+				var bElementOverIndicator = 0;
+				var bShowNAlegendValue = 0;
+				var iTotalFeatures = ((OUoutputLevel == 5) ? geoFeatures.features.length : (geoFeatures.features.length-1));
+				var iFeaturesValuesAccepted = iTotalFeatures;
+				var addressPoints = [];
+				var iDecLim = 1;
+				var sDecRepl = '.';
+				
+				//console.log(JSON.stringify(geoFeatures));
+
+				/* v2.22 required explicit field names where previously no parameters were required */
+				var dxObj = g_Dest + '/api/indicators/' + g_dxUID + '.json?fields=*,indicatorType[id,name],attributeValues[value,attribute[id,displayName]],indicatorGroups[id,name]';
+				var dxObjJ = $.ajax({url:dxObj,headers: { "Authorization": 'Basic ' + g_dpk}, async: false}).responseText; 
+
+				if (dxObjJ.indexOf('Object not found for uid') != -1){
+					var dxObj = g_Dest + '/api/dataelements/' + g_dxUID + '.json';
+					var dxObjJ = $.ajax({url:dxObj,headers: { "Authorization": 'Basic ' + g_dpk}, async: false}).responseText; 
+					if (dxObjJ.indexOf('Object not found for uid') < 0){
+						$('#PageTitle').html('<h3>invalid uid: ' + g_dxUID + '</h3>');
+						return; // stop processing scripts
+					}
+					else{
+
+						bElementOverIndicator = -1;
+						var dxObjJSON = JSON.parse(dxObjJ);
+
+						g_dxName = dxObjJSON.displayName;
+						dxShortName = dxObjJSON.displayShortName;
+						dxDescription = dxObjJSON.description;
+						dxTypeName = dxObjJSON.indicatorType.name;
+
+						/* GREG: HOW WILL YOU DEAL WITH / PRESENT DataElement UIDs ??? */
+						/* ANSWER: Display EVERYTHING as a proportion of the GRAND/CUMMULATIVE TOTAL */
+
+					}
+				}
+				else{
+
+					bElementOverIndicator = 0;
+					var dxObjJSON = JSON.parse(dxObjJ);
+
+					/* Add on missing data elements from Numerator + Denominator formula */
+					g_dxName = dxObjJSON.displayName;
+					dxShortName = dxObjJSON.displayShortName;
+					dxDescription = dxObjJSON.description;
+					indAnnualized = dxObjJSON.annualized;
+					numerator = dxObjJSON.numerator;
+					numeratorDescription = dxObjJSON.numeratorDescription;
+					denominator = dxObjJSON.denominator;
+					denominatorDescription = dxObjJSON.denominatorDescription;
+					dxTypeName = dxObjJSON.indicatorType.name;
+
+					for (var i = 0; i < dxObjJSON.indicatorGroups.length; i++) {
+						dxGroup += dxObjJSON.indicatorGroups[i].name + ((dxObjJSON.indicatorGroups.length > 1) ? '; ' : '');
+					}
+
+					// Load Growth Sentiment
+					for (var i = 0; i < dxObjJSON.attributeValues.length; i++) {
+						if (dxObjJSON.attributeValues[i].attribute.displayName == 'GrowthSentiment'){
+							iGrowthSentiment = dxObjJSON.attributeValues[i].value;
+						}
+					}
+
+					if ((iGrowthSentiment=='') || (iGrowthSentiment == undefined)){
+						iGrowthSentiment = 0;
+					}
+
+					var IndTypeDef = g_Dest + '/api/indicatorTypes/' + dxObjJSON.indicatorType.id + '.json';
+					var IndTypeDefJ = $.ajax({url:IndTypeDef,headers: { "Authorization": 'Basic ' + g_dpk}, async: false}).responseText; 
+					var IndTypeDefJSON = JSON.parse(IndTypeDefJ);
+
+					indicatorTypeFactor = IndTypeDefJSON.factor;
+
+					/*if (numerator.indexOf('{') != 0){
+						var ArrTmpOuter = numerator.split('{');
+						for (var i = 1; i < ArrTmpOuter.length; i++) {
+							if (ArrTmpOuter[i].indexOf('}') != 0 && ArrTmpOuter[i].indexOf('#') != 0){
+								var ArrTmpInner = ArrTmpOuter[i].split('}');
+								Nums += (i == (ArrTmpOuter.length-1)) ? ArrTmpInner[0] : (ArrTmpInner[0]+';');
+							}
+						}
+					}
+
+					if (denominator.indexOf('{') != 0){
+						var ArrTmpOuter = denominator.split('{');
+						for (var i = 1; i < ArrTmpOuter.length; i++) {
+							if (ArrTmpOuter[i].indexOf('}') != 0 && ArrTmpOuter[i].indexOf('#') != 0){
+								var ArrTmpInner = ArrTmpOuter[i].split('}');
+								// if current UID not already listed in numerator formula 
+								if (Nums.indexOf(ArrTmpInner[0]) == -1) {
+									Denoms += (i == (ArrTmpOuter.length-1)) ? ArrTmpInner[0] : (ArrTmpInner[0]+';');
+								}
+							}
+						}
+					}
+
+					dxElements = ((Nums.length > 0) ? (';' + Nums + ((Denoms.length > 0) ? (';' + Denoms) : '')) : '');*/
+
+					dxElements = '';
+
+				}
+
+				var sInnerUrl = g_Dest + '/api/analytics.json?dimension=dx:' + g_dxUID + dxElements + '&filter=pe:' + ((peMM.length > 0) ? peMM : peFilter) + '&dimension=ou:LEVEL-' + OUlevel + ';LEVEL-' + (OUoutputLevel) + ';' + OUid + '&displayProperty=NAME&outputIdScheme=UID&includeNumDen=true' + ((g_SvrV > '2.24') ? '&includeNumDen=true' : '') ; //&includeNumDen=true
+				var sInnerJ = $.ajax({url:sInnerUrl,headers: { "Authorization": 'Basic ' + g_dpk}, async: false}).responseText; 
+				var sInnerJSON = JSON.parse(sInnerJ);
+				var cleanedJSON = ((ValueRange.length > 0) ? ProcessValueRangeCriteria(sInnerJSON) : sInnerJSON);
+				var sDownloadOptions = '&nbsp;&nbsp;<span style="color:#404040;">Download data to:</span>&nbsp;&nbsp;<a href="../api/analytics.csv?dimension=dx:' + g_dxUID + dxElements + '&filter=pe:' + peFilter + '&dimension=ou:LEVEL-' + (OUoutputLevel) + ';' + OUid + '&displayProperty=NAME&outputIdScheme=NAME">CSV</a>&nbsp;&nbsp;';
+				sDownloadOptions += '&nbsp;&nbsp;|&nbsp;&nbsp;';
+				sDownloadOptions += '<a href="../api/analytics.xls?dimension=dx:' + g_dxUID + dxElements + '&filter=pe:' + peFilter + '&dimension=ou:LEVEL-' + (OUoutputLevel) + ';' + OUid + '&displayProperty=NAME&outputIdScheme=NAME">XLS</a>&nbsp;&nbsp;';
+
+				if (g_RegAvg != ''){
+					g_RegAvg = parseFloat(g_RegAvg);
+				}
+				else{
+					//GREG: Figure out how you will 'recalculate' AVG indicator value for multiple ouUIDs (e.g. your idea for comparing GP + KZN for ANC 1st Test Positive)
+					g_RegAvg = ReturnLookupValue(cleanedJSON,g_dxUID ,OUid);
+				}
+
+				var objNames = JSON.parse(JSON.stringify(cleanedJSON.metaData.items));
+
+				average = function(a) {
+				  var r = {mean: 0, variance: 0, deviation: 0}, t = a.length;
+				  for(var m, s = 0, l = t; l--; s += a[l]);
+				  for(m = r.mean = s / t, l = t, s = 0; l--; s += Math.pow(a[l] - m, 2));
+				  return r.deviation = Math.sqrt(r.variance = s / t), r;
+				}
+
+				var MyArr = [];
+				var iIncr = 0;
+
+				if (gsScheme.length == 0){
+					switch (parseInt(iGrowthSentiment)) {
+						case -1:
+							//gsScheme = "#08FF00;#46FF40;#95FF91;#F5F5F5;#FFE46E;#FFBF00;#FF0000";
+							gsScheme = "#08FF00;#FF0000";
+							break;
+						case 1:
+							//gsScheme = "#FF0000;#FFBF00;#FFE46E;#F5F5F5;#95FF91;#46FF40;#08FF00";
+							gsScheme = "#FF0000;#08FF00";
+							break;
+						case 0:
+							//gsScheme = "#000D59;#2949FF;#8FA0FF;#F5F5F5;#8FA0FF;#2949FF;#0011FF";
+							gsScheme = "#002759;#370059";
+							break;
+						default:
+							//gsScheme = "#76397E;#9A4D9C;#BE61BA;#FFD2FF;#BE61BA;#9A4D9C;#76397E";
+							gsScheme = "#002759;#370059";
+							break;
+					}
+				}
+				else{
+					var arrGS = gsScheme.split(';');
+					gsScheme = ('#' + arrGS[0] + ';' + '#' + arrGS[1]);
+				}
+
+				{
+					for (var i = 0; i < geoFeatures.features.length; i++) {
+
+						/* IGNORE 'PARENT' REGION data */
+						if (geoFeatures.features[i].properties['id'] != OUid)
+						{
+
+							iLookup = '';
+							iLookup = ReturnLookupValue(cleanedJSON,g_dxUID,geoFeatures.features[i].properties['id']);
+
+							/* GREG: review method of calculating indicator totals (do values with blank/missing numerators have their denominators included in the aggregate total)?*/
+							{
+
+								sOUitems += ((i == (geoFeatures.features.length-1)) ? geoFeatures.features[i].properties['id'] : geoFeatures.features[i].properties['id'] + ',');
+
+								if (parseFloat(iRangeMin) > parseFloat(iLookup)){
+									iRangeMin = parseFloat(iLookup);
+								}
+								if (parseFloat(iRangeMax) < parseFloat(iLookup)){
+									iRangeMax = parseFloat(iLookup);
+								}
+								if (geoFeatures.features[i].properties['id'] != OUid){
+									if (iLookup != ''){
+										MyArr[iIncr] = parseFloat(iLookup);
+										iIncr += 1;
+									}
+								}
+								bGeometryPointsExist = ((bGeometryPointsExist == 0) ? (geoFeatures.features[i].geometry.type == 'Point') ? 1 : bGeometryPointsExist : bGeometryPointsExist);
+								geoFeatures.features[i].properties['geometryType'] = geoFeatures.features[i].geometry.type;
+								geoFeatures.features[i].properties['geometryParent'] = ((geoFeatures.features[i].properties['id'] != OUid) ? 1 : 0);
+							}
+
+						}
+
+					}
+
+					var xArr = average(MyArr);
+
+					//if not value parsed
+					if (g_iStDev == ''){
+						g_iStDev = xArr.deviation;
+					}
+
+					iMean = xArr.mean;
+					iVariance = xArr.variance;
+					iMode = mode(MyArr);
+					iMedian = median(MyArr);
+					iIncr = 0;
+
+				}
+
+				var iCeil = i;
+
+				while (i--) {
+
+					iLookup = '';
+
+					var iNum = '';
+					var iDenom = '';
+
+					iLookup = ReturnLookupValue(cleanedJSON,g_dxUID,geoFeatures.features[i].properties['id']);
+					iNum = ReturnColValue(cleanedJSON,g_dxUID,geoFeatures.features[i].properties['id'],3); //ReturnLookupValueFormula(cleanedJSON,numerator,Nums,geoFeatures.features[i].properties['id'],0);
+					iDenom = ReturnColValue(cleanedJSON,g_dxUID,geoFeatures.features[i].properties['id'],4); //ReturnLookupValueFormula(cleanedJSON,denominator,Denoms,geoFeatures.features[i].properties['id'],0);
+					iGTnum += ((iNum != '') ? parseFloat(iNum) : 0);
+					iGTden += ((iDenom != '') ? parseFloat(iDenom) : 0);
+
+					geoFeatures.features[i].properties['numerator'] = parseFloat(iNum);
+					geoFeatures.features[i].properties['denominator'] = parseFloat(iDenom);
+					geoFeatures.features[i].properties['impact.score'] = 0;
+
+					if (iLookup != ''){
+						geoFeatures.features[i].properties[g_dxName] = parseFloat(iLookup).toFixed(iDecLim).replace('.0','');
+						geoFeatures.features[i].properties['value'] = parseFloat(iLookup).toFixed(iDecLim).replace('.0','');
+						// IF VALID-RANGE APPLIED (changing population size) THEN CALCAULTE Z SCORE USING 
+						//if ( (iFeaturesValuesAccepted != iTotalFeatures) || (g_RegAvg.length != 0) ) {
+						if ( (getParameterByName('dxval').length != 0) ) {
+							geoFeatures.features[i].properties['ZScore'] = (parseFloat((parseFloat(iLookup) - parseFloat(g_RegAvg)) / parseFloat(parseFloat(g_iStDev) / Math.sqrt(iTotalFeatures)) )).toFixed(8).replace('.00000000','');
+						}
+						else{
+							geoFeatures.features[i].properties['ZScore'] = (parseFloat((parseFloat(iLookup) - parseFloat(g_RegAvg)) / parseFloat(g_iStDev))).toFixed(8).replace('.00000000','');
+						}
+					}
+					else{
+						//geoFeatures.features[i].properties[g_dxName] = 'n/a';
+						//bShowNAlegendValue = 1;
+						geoFeatures.features.splice(i,1);
+					}
+
+				}
+
+				for (var i = 0; i < geoFeatures.features.length; i++) {
+					geoFeatures.features[i].properties['numerator'] = parseFloat(iNum);
+					geoFeatures.features[i].properties['denominator'] = parseFloat(iDenom);
+					geoFeatures.features[i].properties['impact.score'] = ( (geoFeatures.features[i].properties['numerator'] / iGTnum) * 100 * geoFeatures.features[i].properties['value'] );
+				}
+console.log(geoFeatures);
+				i = iCeil;
+
+				var iScaleLow = ((parseFloat(iRangeMin) - parseFloat(g_RegAvg)) / parseFloat(g_iStDev))
+				var iScaleHigh = ((parseFloat(iRangeMax) - parseFloat(g_RegAvg)) / parseFloat(g_iStDev))
+
+				iScaleAbsLow = ((parseFloat(iScaleLow) < 0) ? Math.floor(parseFloat(iScaleLow)) : Math.ceil(parseFloat(iScaleLow)));
+				iScaleAbsHigh = ((parseFloat(iScaleHigh) < 0) ? Math.floor(parseFloat(iScaleHigh)) : Math.ceil(parseFloat(iScaleHigh)));
+
+				var iRange = (Math.abs(iScaleAbsHigh) + Math.abs(iScaleAbsLow));
+
+				/* BUILD SUMMARY TITLE BLOCK containing indicator name, region, period and stat overview */
+				var DxOverview = '';
+
+				DxOverview += '<table border=0 cellpadding=0 cellspacing=0 class="" style="padding:4px;width:100%;">';
+				DxOverview += '<tr>';
+				DxOverview += '<td colspan=2 style="text-align:left;color:#000000;font-size:16pt;"><b>' + g_SvrName + ': ' + g_dxName + '</b></td>';
+				DxOverview += '<td>&nbsp;</td>';
+				DxOverview += '<td rowspan=4 style="width:400px;text-align:right;vertical-align:bottom;">';
+
+					DxOverview += '<table border=0 cellpadding=0 cellspacing=0 align=right>';
+					DxOverview += '<tr>';
+					DxOverview += '<td style="text-align:right;">&nbsp;Sample Size:&nbsp;</td>';
+					//DxOverview += '<td style="text-align:left;">' + ((iFeaturesValuesAccepted != iTotalFeatures) ? (iFeaturesValuesAccepted + ' / ' + iTotalFeatures + ' (' + parseFloat((iFeaturesValuesAccepted/iTotalFeatures) * 100).toFixed(0) + '%)') : iTotalFeatures) + '</td>';
+					DxOverview += '<td style="text-align:left;">' + ((iFeaturesValuesAccepted != iTotalFeatures) ? (iFeaturesValuesAccepted + ' / ' + iTotalFeatures) : iTotalFeatures) + '</td>';
+					DxOverview += '</tr>';
+
+					DxOverview += '<tr>';
+					DxOverview += '<td style="text-align:right;">&nbsp;Range:&nbsp;</td>';
+					DxOverview += '<td style="text-align:left;">' + (parseFloat(iRangeMax) - parseFloat(iRangeMin)).toFixed(iDecLim).replace('.0','') + '&nbsp;(' + parseFloat(iRangeMin).toFixed(iDecLim).replace('.0','') + ' - ' + parseFloat(iRangeMax).toFixed(iDecLim).replace('.0','') + ')</td>';
+					DxOverview += '</tr>';
+
+					//DxOverview += '<tr>';
+					//DxOverview += '<td style="text-align:right;">&nbsp;Variance:&nbsp;</td>';
+					//DxOverview += '<td style="text-align:left;">' + parseFloat(iVariance).toFixed(iDecLim).replace('.00','') + '&nbsp;</td>';
+					//DxOverview += '</tr>';
+
+					DxOverview += '<tr>';
+					DxOverview += '<td style="text-align:right;">&nbsp;Median:&nbsp;</td>';
+					DxOverview += '<td style="text-align:left;">' + parseFloat(iMedian).toFixed(iDecLim).replace('.00','') + '&nbsp;</td>';
+					DxOverview += '</tr>';
+
+					DxOverview += '<tr>';
+					DxOverview += '<td style="text-align:right;">&nbsp;SD:&nbsp;</td>';
+					DxOverview += '<td style="text-align:left;">' + parseFloat(g_iStDev).toFixed(iDecLim).replace('.00','') + '&nbsp;(skew:' + (3 * (g_RegAvg - iMedian) / g_iStDev).toFixed(2).replace('.00','') + ')</td>';
+					DxOverview += '</tr>';
+
+					// YOU CANNOT INCLUDE COEFFICIENT OF VARIATION WHEN INSERTING A 'TARGET VALUE' AS CV CALCULATION RELIES ON A MEAN NOT IMPOSED MEAN: CV FORMULA = (SD / MEAN * 100)
+					if (g_RegAvg.length == 0){
+						DxOverview += '<tr>';
+						DxOverview += '<td style="text-align:right;">&nbsp;CV/RSD:&nbsp;</td>';
+						DxOverview += '<td style="text-align:left;">' + parseFloat((g_iStDev * 100) / parseFloat(g_RegAvg)).toFixed(iDecLim).replace('.00','') + '%</td>';
+						DxOverview += '</tr>';
+					}
+					DxOverview += '</table>';
+
+				DxOverview += '</td>';
+				DxOverview += '</tr>';
+				DxOverview += '<tr>';
+				DxOverview += '<td colspan=1 style="text-align:right;width:280px;">&nbsp;<b>' + OUname + '&nbsp;</b></td>';
+				DxOverview += '<td rowspan=2 style="font-size:18pt;color:#000000;vertical-align:top;text-align:left;">&nbsp;' + g_RegAvg + '&nbsp;' + dxTypeName + '&nbsp;';
+				if (iCalcNewScore != 0){
+					DxOverview += '<span id="score_recalc" name="score_recalc" title="recalculated using value-range" style="font-size:11pt;color:#909090;"></span>';
+				}
+				DxOverview += '</td>';
+				DxOverview += '<td rowspan=2 style="with:400px">&nbsp;</td>';
+				DxOverview += '</tr>';
+
+					DxOverview += '<tr>';
+					DxOverview += '<td colspan=1 style="text-align:right;">&nbsp;period:&nbsp;' + peFilter + '&nbsp;</td>';
+					DxOverview += '</tr>';
+
+				DxOverview += '<table>';
+
+				$('#PageTitle').html(DxOverview);
+				$('#downloadOptions').html(sDownloadOptions);
+
+				var ArrRange = gsScheme.split(';');
+				var iLastCol;
+				var sLastValidCol;
+				iIncr = 0;
+				iCounter = iScaleAbsLow;
+
+				for (var i = 1; i <= iRange; i++) {
+
+					iLookup = parseFloat(g_RegAvg) + (parseFloat(g_iStDev) * iCounter);
+
+					{
+						LegendGrades[iIncr] = parseFloat(iLookup);
+						LegendRangeTestValues[iIncr] = iCounter; (iCounter >= 0) ? (iCounter + 1): iCounter;
+						/*iLastCol = (iCounter < -1) ? ArrRange[0] : 
+											(((iCounter >= 0) ? (iCounter + 1): iCounter) > 1) ? ArrRange[1] :
+											(Math.abs((iCounter >= 0) ? (iCounter + 1): iCounter) == 1) ? '#FFFF00' : '#FFFF00';*/
+						iLastCol = (iCounter < -1) ? ArrRange[0] : 
+											(((iCounter >= 0) ? (iCounter + 1): iCounter) > 1) ? ArrRange[1] :
+											(Math.abs((iCounter >= 0) ? (iCounter + 1): iCounter) == 1) ? '#f5f5f5' : '#f5f5f5';
+						if (iLastCol != undefined){
+							sLastValidCol = iLastCol;
+							LegendCols[iIncr] = sLastValidCol;
+							iIncr += 1;
+							iCounter += 1;
+						}
+					}
+				}
+
+				/* Add additional 'range value' for legend grade as .toFixed(iDecLim) is causing trouble with color coding further down */
+				iLookup = parseFloat(g_RegAvg) + (parseFloat(g_iStDev) * iCounter);
+				LegendRangeTestValues[iIncr] = iCounter;
+				LegendCols[iIncr] = sLastValidCol;
+
+				// Determine centre point of GIS map based on known coordinate ranges
+				x1 = ReturnLow(geoFeatures,0);
+				y1 = ReturnLow(geoFeatures,1);
+				x2 = ReturnHigh(geoFeatures,0);
+				y2 = ReturnHigh(geoFeatures,1);
+
+				//var map = L.map('map').setView([-32.2, 26.5], 7);
+				var map = L.map(DestID).setView([parseFloat(y1) + ((parseFloat(y2) - parseFloat(y1)) / 2), parseFloat(x1) + ((parseFloat(x2) - parseFloat(x1)) / 2)], (((OUlevel+1) * 1.45) + 3));
+				//console.log('x1: ' + x1 + ' x2: ' + x2 + ' y1: ' + y1 + ' y2: ' + y2);
+
+				LoadDxDefinitionDetailBlock(g_dxName,'#summary1');
+				LoadPrioritisedSummaryLeft(cleanedJSON,'#summary2');
+				CreatePerformanceSentimentCategories(geoFeatures,'#summary3');
+
+				var DataRangeProfileJSON = TransformDistributionJSON(cleanedJSON);
+				var DistrProfileJSON = TransformHistogramDistributionJSON(cleanedJSON);
+
+				//console.log(LegendCols);
+				//console.log(DataRangeProfileJSON);
+
+				createBarChartValueRange('ValueRangeProfile',1100,300,JSON.parse(JSON.stringify(DataRangeProfileJSON)),OUname,g_dxName);
+				createHistogramDataDistributionWithStdDevBands('HistogramProfile',1100,300,JSON.parse(JSON.stringify(DistrProfileJSON)),OUname,iDecLim,LegendCols,LegendGrades,g_iStDev,iScaleAbsLow,iScaleAbsHigh,g_RegAvg);
+
+				L.tileLayer('http://{s}.tiles.wmflabs.org/bw-mapnik/{z}/{x}/{y}.png', {
+					maxZoom: 18,
+					attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+				}).addTo(map);;
+
+		/*
+				// add imagery
+				L.tileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+				  attribution: 'Map data &copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors, <a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>',
+				  subdomains: 'abc',
+				  maxZoom: 17
+				}).addTo(map);
+
+				L.tileLayer('https://{s}.tiles.mapbox.com/v3/{id}/{z}/{x}/{y}.png', {
+					maxZoom: 18,
+					attribution: 'Map data &copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors, ' +
+						'<a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, ' +
+						'Imagery © <a href="http://mapbox.com">Mapbox</a>',
+					id: 'examples.map-20v6611k'
+				}).addTo(map);
+
+
+				L.tileLayer('http://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+					maxZoom: 16,
+					attribution: 'Map data: &copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>, <a href="http://viewfinderpanoramas.org">SRTM</a> | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)'
+				}).addTo(map);
+
+				L.tileLayer('http://otile{s}.mqcdn.com/tiles/1.0.0/{type}/{z}/{x}/{y}.{ext}', {
+					type: 'map',
+					ext: 'jpg',
+					attribution: 'Tiles Courtesy of <a href="http://www.mapquest.com/">MapQuest</a> &mdash; Map data &copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+					subdomains: '1234'
+				}).addTo(map);
+		*/
+
+				// control that shows state info on hover
+				var info = L.control();
+
+				info.onAdd = function (map) {
+					this._div = L.DomUtil.create('div', 'info');
+					this.update();
+					return this._div;
+				};
+
+				info.update = function (props) {
+					this._div.innerHTML = ReturnHTMLpreview(JSON.stringify(props));
+				};
+
+				info.addTo(map);
+
+				function AdaptStyle(feature) {
+					if (feature.properties['id'] == OUid)
+					{
+						/*if ((bGeometryPointsExist == 1) && (feature.properties.geometryType != 'Point')){
+							feature.bringToBack();
+						}*/
+						return {
+							weight: 1,
+							opacity: 1,
+							color: '#2335BA',
+							zIndex: feature.index,
+							dashArray: '0',
+							fillOpacity: 0,
+							fillColor: '#ffffff'}
+					}
+					else
+					{
+						if (feature.properties.geometryType == 'Point')
+						{
+							//feature.bringToFront();
+							if (1 == 0){ //TEMPORARILY DEACTIVED: scales points dynamically but want to try emphasise area around facility instead of bubble size
+							return {
+								weight: 1,
+								opacity: (Math.abs(feature.properties['ZScore']) / (( Math.abs(iScaleAbsLow) > Math.abs(iScaleAbsHigh)) ? Math.abs(iScaleAbsLow) : Math.abs(iScaleAbsHigh) ) * 5).toFixed(2),
+								color: ((Math.abs(feature.properties['ZScore']) > 1) ? getColor(parseFloat()) : '#2335BA'),
+								zIndex: feature.index,
+								dashArray: '0',
+								fillOpacity: (Math.abs(feature.properties['ZScore']) / (( Math.abs(iScaleAbsLow) > Math.abs(iScaleAbsHigh)) ? Math.abs(iScaleAbsLow) : Math.abs(iScaleAbsHigh) )).toFixed(2),
+								fillColor: getColor(parseFloat(feature.properties['ZScore'])),
+								radius: (((parseFloat(feature.properties['numerator']) / parseFloat(iGTnum) * 100) < 3) ? 3 : parseFloat(feature.properties['numerator']) / parseFloat(iGTnum) * 100)}
+								//radius: (((parseFloat(feature.properties['numerator']) / parseFloat(iGTnum) * 1000) > 10) ? (parseFloat(feature.properties['numerator']) / parseFloat(iGTnum) * 1000).toFixed(2) : (((parseFloat(feature.properties['numerator']) / parseFloat(iGTnum) * 1000) > 2) ? (parseFloat(feature.properties['numerator']) / parseFloat(iGTnum) * 1000).toFixed(2) : 3) )}
+								//radius: (((parseFloat(feature.properties['denominator']) / parseFloat(iGTden) * 1000) > 8) ? (parseFloat(feature.properties['denominator']) / parseFloat(iGTden) * 1000).toFixed(2) : (((parseFloat(feature.properties['denominator']) / parseFloat(iGTden) * 1000) > 4) ? (parseFloat(feature.properties['denominator']) / parseFloat(iGTden) * 1000).toFixed(2) : 2) )}
+							}
+							else{
+								//console.log((Math.abs(feature.properties['ZScore']) / (( Math.abs(iScaleAbsLow) > Math.abs(iScaleAbsHigh)) ? Math.abs(iScaleAbsLow) : Math.abs(iScaleAbsHigh) ) * 8).toFixed(2));
+								return {
+									weight: 0.5,
+									opacity: ( 1 - (Math.abs(feature.properties['ZScore']) / 10)  ), //(Math.abs(feature.properties['ZScore']) / (( Math.abs(iScaleAbsLow) > Math.abs(iScaleAbsHigh)) ? Math.abs(iScaleAbsLow) : Math.abs(iScaleAbsHigh) ) * 8).toFixed(2),
+									color: '#404040', //((Math.abs(feature.properties['ZScore']) > 1) ? getColor(parseFloat(feature.properties['ZScore'])) : '#101010'),
+									zIndex: parseFloat((feature.properties['numerator']) / parseFloat(iGTnum) * 2000).toFixed(0), //feature.index,
+									dashArray: '0',
+									fillOpacity: (Math.abs(feature.properties['ZScore']) / (( Math.abs(iScaleAbsLow) > Math.abs(iScaleAbsHigh)) ? Math.abs(iScaleAbsLow) : Math.abs(iScaleAbsHigh) )).toFixed(2),
+									fillColor: getColor(parseFloat(feature.properties['ZScore'])),
+									radius: (((parseFloat(feature.properties['numerator']) / parseFloat(iGTnum) * 2000) < 2) ? 3 : parseFloat(feature.properties['numerator']) / parseFloat(iGTnum) * 2000)}
+									//radius: (((parseFloat(feature.properties['denominator']) / parseFloat(iGTden) * 2000) < 2) ? 3 : parseFloat(feature.properties['denominator']) / parseFloat(iGTden) * 2000)}
+									//zIndex: parseFloat(feature.properties['numerator']) / parseFloat(iGTnum) * 1000), //feature.index,
+							}
+						}
+						else
+						{
+							if (bGeometryPointsExist == 1){
+								feature.bringToBack();
+							}
+							return {
+								weight: 1,
+								opacity: 0.75,
+								color: '#3A5C8A',
+								zIndex: feature.index,
+								dashArray: '0',
+								fillOpacity: (Math.abs(feature.properties['ZScore']) / (( Math.abs(iScaleAbsLow) > Math.abs(iScaleAbsHigh)) ? Math.abs(iScaleAbsLow) : Math.abs(iScaleAbsHigh) )).toFixed(2),
+								fillColor: getColor(parseFloat(feature.properties['ZScore']))}
+						}
+					}
+				}
+
+				function highlightFeature(e) {
+
+					var layer = e.target;
+
+					{
+						if (layer.feature.properties.geometryType == 'Point'){
+							//console.log('yes');
+							layer.bringToFront();
+							info.update(layer.feature.properties);
+						}
+						else{
+
+							if (bGeometryPointsExist == 0)
+							{
+								layer.setStyle({
+									weight: 2,
+									color: '#2335BA',
+									dashArray: '',
+									fillOpacity: (Math.abs(layer.feature.properties['ZScore']) / (( Math.abs(iScaleAbsLow) > Math.abs(iScaleAbsHigh)) ? Math.abs(iScaleAbsLow) : Math.abs(iScaleAbsHigh))).toFixed(2)
+								});
+								//fillOpacity: 1
+
+								if (!L.Browser.ie && !L.Browser.opera) {
+								//	layer.bringToFront();
+								}
+
+								info.update(layer.feature.properties);
+							}
+							else
+							{
+								layer.bringToBack();
+								/*layer.setStyle({
+									weight: 2,
+									color: '#2335BA',
+									dashArray: '',
+									fillOpacity: 0
+								});*/
+							}
+						}
+					}
+
+				}
+				
+
+				function donotHighlightFeature(e) {
+					var layer = e.target;
+					{
+						layer.bringToBack();
+					}
+				}
+
+				var geojson;
+
+				if (bGeometryPointsExist){
+					geojson = L.geoJson(geoFeatures, {
+						style: AdaptStyle,
+						pointToLayer: function(feature, latlng) {
+							return new L.CircleMarker(latlng, {radius: 5, fillOpacity: 0.85, lineWidth: 1});
+						},
+						onEachFeature: onEachFeature
+					}).addTo(map);
+					//map.addLayer(geojson);
+				}
+				else{
+					geojson = L.geoJson(geoFeatures, {
+						style: AdaptStyle,
+						onEachFeature: onEachFeature
+					}).addTo(map);
+				}
+
+
+		/*
+				map.attributionControl.addAttribution('Population data &copy; <a href="http://census.gov/">US Census Bureau</a>');
+		*/
+
+				var legend = L.control({position: 'bottomright'});
+
+				legend.onAdd = function (map) {
+
+					var iOpac;
+					var iLgZs;
+					//var sStyle;
+
+					/*var div = L.DomUtil.create('div', 'info legend'),
+						grades = [0, 10, 20, 50, 100, 200, 500, 1000],
+						labels = [],
+						from, to;*/
+					var div = L.DomUtil.create('div', 'info legend'),
+						grades = LegendGrades,
+						labels = [],
+						from, to;
+
+					for (var i = 0; i < grades.length; i++) {
+						from = grades[i];
+						to = grades[i + 1];
+						iLgZs = parseFloat(( (((parseFloat(from) + (parseFloat(g_iStDev)/2)) - parseFloat(g_RegAvg)) / parseFloat(g_iStDev))));
+						iOpac = (Math.abs(iLgZs) / (( Math.abs(iScaleAbsLow) > Math.abs(iScaleAbsHigh)) ? Math.abs(iScaleAbsLow) : Math.abs(iScaleAbsHigh) )).toFixed(2);
+						//sStyle = ((parseFloat(iLgZs) == 0) ? 'border-bottom:1px solid #000000;' : 'border-bottom:1px solid #ffffff;');
+						labels.push(
+							'<i title="' + ((parseFloat(iLgZs) == 0) ? '1' : parseFloat(iLgZs).toFixed(0)) + '&oacute;" style="opacity:' + iOpac + ';background:' + LegendCols[i] + '"></i> ' +
+							((parseFloat(from) < 0) ? '0 ' : parseFloat(from).toFixed(2).replace('.00','')) + (to ? '&ndash;' + parseFloat(to).toFixed(2).replace('.00','') : '+'));
+					}
+					if (bShowNAlegendValue > 0){
+						labels.push(
+							'<i title="No Data" style="opacity:1;background:#3A5C8A"></i> <span style="color:#3A5C8A;">No Data</span>');
+					}
+					div.innerHTML = labels.join('<br>');
+					//div.style = sStyle;
+					return div;
+				};
+
+				legend.addTo(map);
+
+				function resetHighlight(e) {
+					geojson.resetStyle(e.target);
+					info.update();
+				}
+
+				function resetPolygonFrame(e) {
+					var layer = e.target;
+					layer.sendToBack();
+					/*geojson.resetStyle(e.target);*/
+					info.update();
+				}
+				function zoomToFeature(e) {
+					//var layer = e.target;
+					map.fitBounds(e.target.getBounds());
+				}
+
+				function onEachFeature(feature, layer) {
+
+					if (bGeometryPointsExist){
+
+						if (layer.feature.properties.geometryType == 'Point'){
+							layer.bindPopup(ReturnHTMLpreview(JSON.stringify(feature.properties)));
+						}
+						else{
+							layer.on({
+								mouseover: donotHighlightFeature,
+								mouseout: resetPolygonFrame
+							});
+						}
+					}
+					else{
+						layer.on({
+							mouseover: highlightFeature,
+							mouseout: resetHighlight,
+							click: zoomToFeature
+						});
+					}
+
+				}
+
+				function ReturnArrValues(theData,iColTest,TestVal,iCol){
+
+					var i;
+					var MyArr = [];
+					var iIncr = 0;
+
+					for(i = 0; i < theData.rows.length; i++) {
+						if (theData.rows[i][iColTest] == TestVal){
+							MyArr[iIncr] = parseFloat(theData.rows[i][iCol]);
+							iIncr += 1;
+						}
+					}
+
+					return MyArr;
+
+				}
+
+				// get color depending on population density value
+				function ReturnLow(geoFeatures,iOffset){
+				
+					var sReturn = '';
+					var sTemp;
+					
+					for (var i = 0; i < geoFeatures.features.length; i++) {
+
+						if (geoFeatures.features[i].geometry.type == "Point"){
+
+							sArr = geoFeatures.features[i].geometry.coordinates.toString().split(",");			
+
+							if (sReturn == ''){
+								sReturn = sArr[iOffset];
+							}
+							else{
+								if (parseFloat(sReturn) < parseFloat(sArr[iOffset])){
+									sReturn = parseFloat(sArr[iOffset]);
+								}
+							}
+
+						}
+						else{
+
+							sTemp = geoFeatures.features[i].geometry.coordinates[0].toString();
+
+							var sArr = sTemp.split(",");
+						
+							for (var p = iOffset; p < sArr.length; p+=2) {
+								if (sReturn == ''){
+									sReturn = sArr[p];
+								}
+								else{
+									if (sReturn < sArr[p]){
+										sReturn = sArr[p];
+									}
+								}
+							}
+						}
+					}
+					return parseFloat(sReturn);
+				}
+
+				function ReturnHigh(geoFeatures,iOffset){
+				
+					var sReturn = '';
+					var sTemp;
+					
+					for (var i = 0; i < geoFeatures.features.length; i++) {
+
+						if (geoFeatures.features[i].geometry.type == "Point"){
+
+							sArr = geoFeatures.features[i].geometry.coordinates.toString().split(",");			
+
+							if (sReturn == ''){
+								sReturn = sArr[iOffset];
+							}
+							else{
+								if (parseFloat(sReturn) > parseFloat(sArr[iOffset])){
+									sReturn = parseFloat(sArr[iOffset]);
+								}
+							}
+
+						}
+						else{
+
+							sTemp = geoFeatures.features[i].geometry.coordinates[0].toString();			
+							var sArr = sTemp.split(",");
+
+							for (var p = iOffset; p < sArr.length; p+=2) {
+								if (sReturn == ''){
+									sReturn = sArr[p];
+								}
+								else{
+									if (sReturn > sArr[p]){
+										sReturn = sArr[p];
+									}
+								}
+							}
+						}
+					}
+					return parseFloat(sReturn);
+				}
+
+				function TransformHistogramDistributionJSON(myData){
+
+					var i;
+					var p;
+					var sReturn = '';
+					var sBGcol;
+					var sCol;
+					var iNum = 0;
+					var iDen = 0;
+					var iValCol;
+					var sLastOU;
+					var objNames = JSON.parse(JSON.stringify(myData.metaData.items));
+					var newJ;
+
+					var sort_by = function(field, reverse, primer){
+
+					   var key = primer ? 
+						   function(x) {return primer(x[field])} : 
+						   function(x) {return x[field]};
+
+					   reverse = !reverse ? 1 : -1;
+
+					   return function (a, b) {
+						   return a = key(a), b = key(b), reverse * ((a > b) - (b > a));
+						 } 
+					}
+
+					sReturn += '[';
+
+					for(p = 0; p < myData.headers.length; p++) 
+					{
+						if (myData.headers[p].name == 'value')
+						{
+							iValCol = p;
+						}
+					}
+
+					for(i = 0; i < myData.rows.length; i++)
+					{
+						if (myData.rows[i] != undefined)
+						{
+							if (((myData.rows[i][1] != OUid)) && (myData.rows[i][0] == g_dxUID))
+							{
+								sReturn += '{';
+								for(p = 0; p < myData.headers.length; p++) 
+								{
+									if (myData.headers[p].name == 'ou')
+									{
+										sReturn += '"ou": "' + ReturnLookupName(objNames,myData.rows[i][p]) + '"';
+									}
+									else{
+										if (myData.headers[p].name == 'value')
+										{
+											sReturn += '"' + myData.headers[p].name + '" : "' + myData.rows[i][p] + '"';
+										}
+										else
+										{
+											if (p > 2){
+												sReturn += '"' + myData.headers[p].name + '" : "' + myData.rows[i][p] + '"';
+											} else {
+												sReturn += '"Data" : "' + ReturnLookupName(objNames,myData.rows[i][p]) + '"';
+											}
+										}
+									}
+									if (p != myData.headers.length-1)
+									{
+										sReturn += ',';
+									}
+								}
+								sReturn += '}';
+								if (i != myData.rows.length-1)
+								{
+									sReturn += ',';
+								}
+							}
+						}
+					}
+
+					sReturn = (sReturn.substr(sReturn.length - 1) == ',' ? sReturn.substring(0, sReturn.length-1) : sReturn);
+					sReturn += ']';
+
+					newJ = JSON.parse(sReturn);
+					newJ.sort(sort_by('value', false, parseFloat));
+
+					var iLength = parseFloat(newJ.length-1);
+					var iMin = parseFloat(newJ[0].value);
+					var iMax = parseFloat(newJ[iLength].value);
+					var iNewLength = iLength;
+
+					if (iNewLength > 1000){
+						iNewLength = Math.sqrt(iNewLength/3).toFixed(0);
+					}
+
+					if (iNewLength > 500){
+						iNewLength = Math.sqrt(iNewLength/2).toFixed(0);
+					}
+
+					if (iNewLength > 300){
+						iNewLength = Math.sqrt(iNewLength/1).toFixed(0);
+					}
+
+					if (iNewLength > 100){
+						iNewLength = parseFloat(iNewLength/2).toFixed(0);
+					}
+
+					var iRange = (parseFloat(iMax) - parseFloat(iMin));
+					var iUnitRangeShare = parseFloat(iRange / iNewLength);
+					var iSqrRootLen = Math.sqrt(iNewLength);
+					var iHistoBandWidth = parseFloat((iRange) * (iSqrRootLen/iNewLength));
+
+					iHistoBandWidth = (parseFloat(iHistoBandWidth) > 1 ? Math.floor(iHistoBandWidth) : parseFloat(iHistoBandWidth).toFixed(5));
+
+					var myNewArr = [];
+					var iBandStart = ((iMin < 0) ? Math.floor(iMin) : (((iMin/iHistoBandWidth) < 1) ? 0 : (iMin.toFixed(0) > iMin) ? (iMin.toFixed(0) - iHistoBandWidth) : iMin.toFixed(0)));
+					var iBandTo = iBandStart;
+					var iCounter = 0;
+
+		/*
+					console.log('iLength: ' + iLength);
+					console.log('iNewLength: ' + iNewLength);
+					console.log('iMin: ' + iMin);
+					console.log('iMax: ' + iMax);
+					console.log('iRange: ' + iRange);
+					console.log('iUnitRangeShare: ' + iUnitRangeShare);
+					console.log('iSqrRootLen: ' + iSqrRootLen);
+					console.log('iSqrRootLenAFTER: ' + iSqrRootLen);
+					console.log('iHistoBandWidth: ' + iHistoBandWidth);
+					console.log('iHistoBandWidthAFTER: ' + iHistoBandWidth);
+					console.log('(iMin/iHistoBandWidth): ' + (iMin/iHistoBandWidth));
+					console.log('iBandStart: ' + iBandStart);
+					console.log('iBandTo: ' + iBandTo);
+		*/
+
+					for (i = iBandStart; iBandTo <= iMax; i++){
+
+						var iBandFrom = (parseFloat(iBandStart) + parseFloat((iCounter * iHistoBandWidth)));
+						iBandTo = (parseFloat(iBandStart) + parseFloat(((iCounter+1) * iHistoBandWidth)));
+						var iFound = CountValuesInsideDataRange(newJ,iBandFrom,iBandTo);
+
+						myNewArr.push({
+							name: ('group ' + iCounter),
+							min: iBandFrom,
+							max: iBandTo,
+							count: iFound,
+							share: parseFloat(parseFloat(iFound) / parseFloat(iLength))
+						});
+
+						iCounter += 1;
+
+					}
+
+					return JSON.parse(JSON.stringify(myNewArr));
+
+				}
+
+				function download(filename, text) {
+					var pom = document.createElement('a');
+					pom.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
+					pom.setAttribute('download', filename);
+
+					if (document.createEvent) {
+						var event = document.createEvent('MouseEvents');
+						event.initEvent('click', true, true);
+						pom.dispatchEvent(event);
+					}
+					else {
+						pom.click();
+					}
+				}
+
+				function CountValuesInsideDataRange(myData,iRangeFrom,iRangeTo){
+
+					var iReturn = 0;
+
+					for(i = 0; i < myData.length; i++) {
+						if ( (parseFloat(myData[i].value) >= parseFloat(iRangeFrom)) && (parseFloat(myData[i].value) < parseFloat(iRangeTo)) ){
+							iReturn += 1;
+						}
+					}
+					return iReturn;
+				}
+
+				function ProcessValueRangeCriteria(myData){
+
+					var newJSONobj = myData; //JSON.parse(myData);
+					var iValue = 0;
+					var iDx = 0;
+
+					for(p = 0; p < myData.headers.length; p++) {
+						if (myData.headers[p].name == 'value'){
+							iValue = p;
+						}
+						if (myData.headers[p].name == 'dx'){
+							iDx = p;
+						}
+					}
+
+					//for(i = 0; i < newJSONobj.rows.length; i++) {
+					i = newJSONobj.rows.length
+					while (i--) {
+						//console.log('testing if "' + newJSONobj.rows[i].properties['dx'] + '" = "' + g_dxUID + '"');
+						//console.log(newJSONobj.rows[i][1]);
+						if (newJSONobj.rows[i][iDx] == g_dxUID){
+							//console.log('tested ' + i);
+							if ((parseFloat(newJSONobj.rows[i][iValue]) < parseFloat(AbsMin)) || (parseFloat(newJSONobj.rows[i][iValue]) > parseFloat(AbsMax))){
+								//delete newJSONobj.rows[i];
+								newJSONobj.rows.splice(i,1);
+								iFeaturesValuesAccepted = (iFeaturesValuesAccepted - 1);
+							}
+							/*else{
+								if (newJSONobj.rows[i].ou != OUid){
+									iValueRangeAccepted += 1;
+								}
+							}*/
+						}
+					}
+
+					return newJSONobj;
+
+				}
+
+				function TransformDistributionJSON(myData){
+
+					var i;
+					var p;
+					var sReturn = '';
+					var sBGcol;
+					var sCol;
+					var iNum = 0;
+					var iDen = 0;
+					var bFound = 0;
+					var iValCol;
+					var sLastOU;
+					var newJ;
+
+					var sort_by = function(field, reverse, primer){
+
+					   var key = primer ? 
+						   function(x) {return primer(x[field])} : 
+						   function(x) {return x[field]};
+
+					   reverse = !reverse ? 1 : -1;
+
+					   return function (a, b) {
+						   return a = key(a), b = key(b), reverse * ((a > b) - (b > a));
+						 } 
+					}
+
+					sReturn += '[';
+
+					for(i = 0; i < myData.rows.length; i++) {
+
+							if (myData.rows[i][0] == g_dxUID)
+							{
+							
+								var sCol = ( ( OUname == myData.metaData.items[myData.rows[i][1]].name) ? '#df8100' : '#244ea0') ;
+
+								sReturn += '{';
+								sReturn += '"Data" : "' + g_dxName + '",';
+								sReturn += '"ou": "' + myData.metaData.items[myData.rows[i][1]].name + '",';
+								sReturn += '"value" : "' + parseFloat(myData.rows[i][2]) + '",';
+								sReturn += '"numproportion" : "' + 0 + '",';
+								sReturn += '"color" : "' + sCol + '" ';
+								sReturn += '},';
+
+							}
+
+					}
+
+					/*if (bFound != 1){
+						sReturn = (sReturn.substr(sReturn.length - 1) == ',' ? sReturn : sReturn + ',');
+						sReturn += '{';
+						sReturn += '"Data" : "' + g_dxName + '",';
+						sReturn += '"ou": "' + currentUser[0].orgunitFilter.name + '",';
+						sReturn += '"value": "' + parseFloat(g_iPopulationMean) + '",';
+						sReturn += '"numproportion" : "' + 1 + '",';
+						sReturn += '"color" : "#3A5C8A"';
+						sReturn += '}';
+					}*/
+
+					sReturn = (sReturn.substr(sReturn.length - 1) == ',' ? sReturn.substring(0, sReturn.length-1) : sReturn);
+					sReturn += ']';
+
+					newJ = JSON.parse(sReturn).sort(sort_by('value', false, parseFloat));
+					//console.log(newJ);
+					//newJ.sort(sort_by('value', false, parseFloat));
+
+					return newJ;
+				}
+
+				function TransformDistributionJSONOld(myData){
+
+					var i;
+					var p;
+					var sReturn = '';
+					var sBGcol;
+					var sCol;
+					var iNum = 0;
+					var iDen = 0;
+					var bFound = 0;
+					var iValCol;
+					var sLastOU;
+					var objNames = JSON.parse(JSON.stringify(myData.metaData.items));
+					var newJ;
+
+					var sort_by = function(field, reverse, primer){
+
+					   var key = primer ? 
+						   function(x) {return primer(x[field])} : 
+						   function(x) {return x[field]};
+
+					   reverse = !reverse ? 1 : -1;
+
+					   return function (a, b) {
+						   return a = key(a), b = key(b), reverse * ((a > b) - (b > a));
+						 } 
+					}
+
+					sReturn += '[';
+
+					for(p = 0; p < myData.headers.length; p++) {
+						if (myData.headers[p].name == 'value'){
+							iValCol = p;
+						}
+					}
+
+					for(i = 0; i < myData.rows.length; i++) {
+
+						if (myData.rows[i] != undefined){
+							//console.log(i + ' / ' + (myData.rows.length-1) + ': ' + myData.rows[i][0]);
+							if (myData.rows[i][0] == g_dxUID){
+								sReturn += '{';
+								for(p = 0; p < myData.headers.length; p++) {
+									if (myData.headers[p].name == 'ou'){
+										sReturn += '"ou": "' + ReturnLookupName(objNames,myData.rows[i][p]) + '"';
+									}
+									else{
+										if (myData.headers[p].name == 'value'){
+											sReturn += '"' + myData.headers[p].name + '" : "' + myData.rows[i][p] + '"';
+										}
+										else{
+											sReturn += '"Data" : "' + ReturnLookupName(objNames,myData.rows[i][p]) + '"';
+										}
+
+									}
+
+									if (p != myData.headers.length-1){
+										sReturn += ',';
+									}
+								}
+								sReturn += '}';
+								if (i != myData.rows.length-1){
+									sReturn += ',';
+								}
+
+								if (getParameterByName('pname').length > 0){
+									if (myData.rows[i][1] == OUid && ReturnLookupName(objNames,myData.rows[i][p]) == getParameterByName('pname')){
+										bFound = 1;
+									}
+								}
+								else{
+									if (myData.rows[i][1] == OUid){
+										bFound = 1;
+									}
+								}
+
+							}
+
+						}
+
+					}
+
+					if (bFound != 1){
+						sReturn = (sReturn.substr(sReturn.length - 1) == ',' ? sReturn : sReturn + ',');
+						sReturn += '{';
+						sReturn += '"Data" : "' + g_dxName + '",';
+						sReturn += '"ou": "' + getParameterByName('pname') + '",';
+						sReturn += '"value": "' + getParameterByName('dxval') + '"';
+						sReturn += '}';
+					}
+					
+					console.log(sReturn);
+
+					sReturn = (sReturn.substr(sReturn.length - 1) == ',' ? sReturn.substring(0, sReturn.length-1) : sReturn);
+					sReturn += ']';
+
+					newJ = JSON.parse(sReturn);
+					newJ.sort(sort_by('value', false, parseFloat));
+
+					return newJ;
+				}
+
+				function mode(array)
+				{
+					if(array.length == 0)
+						return null;
+					var modeMap = {};
+					var maxEl = array[0], maxCount = 1;
+					for(var i = 0; i < array.length; i++)
+					{
+						var el = array[i];
+						if(modeMap[el] == null)
+							modeMap[el] = 1;
+						else
+							modeMap[el]++;	
+						if(modeMap[el] > maxCount)
+						{
+							maxEl = el;
+							maxCount = modeMap[el];
+						}
+					}
+					return maxEl;
+				}
+
+				function median(values) {
+
+					values.sort( function(a,b) {return a - b;} );
+					var half = Math.floor(values.length/2);
+
+					if(values.length % 2)
+						return values[half];
+					else
+						return (values[half-1] + values[half]) / 2.0;
+				}
+
+				function ReturnHTMLpreview(myJSONtoString){
+
+					if (myJSONtoString != undefined){
+
+						var MyNewString = myJSONtoString.toString().replace(/{/g,'');
+						MyNewString = MyNewString.replace(/}/g,'');
+						MyNewString = MyNewString.replace(/"/g,'');
+						var myNewArr = MyNewString.split(",");
+						var MyReturnPreview = '';
+						var sCode = '';
+
+						for(i = 0; i < myNewArr.length; i++) {
+							var myInnerObj = myNewArr[i].split(":");
+							if (myInnerObj[0].indexOf("id") != 0 && myInnerObj[0].indexOf("grandParent") != 0 && myInnerObj[0].indexOf("hasCoordinate") != 0 && myInnerObj[0].indexOf("parent") != 0 && myInnerObj[0].indexOf("code") != 0  && myInnerObj[0].indexOf("level") != 0 && myInnerObj[0].indexOf("ZScore") != 0 && myInnerObj[0].indexOf("geometryType") != 0 && myInnerObj[0].indexOf("geometryParent") != 0 && myInnerObj[0].indexOf("value") != 0  ) 
+							{
+								if (myInnerObj[0].indexOf("name") == 0){
+									//MyReturnPreview += ('<b>' + sCode + '</b>:' + myInnerObj[1] + '<br>');
+									MyReturnPreview += ('' + myInnerObj[1] + '<br>');
+								}
+								else{
+									MyReturnPreview += ('<b>' + myInnerObj[0] + '</b>:' + myInnerObj[1] + '<br>');
+								}
+							}
+						}
+						return (MyReturnPreview);
+					}
+					else{
+						//return ('<span style="Color:#808080;"><u>' + OUname + '</u><br>' + g_dxName + '<br><div style="font-size:14pt;text-align:right;">' + g_RegAvg + '</div>');
+						return ('&psi;');
+					}
+				}
+
+				function LoadDxDefinitionDetailBlock(g_dxName,sDestination){
+
+					var i;
+					var p;
+					var sReturn = '';
+					var sBGcol;
+					var iOpac;
+					var sCol;
+					var iNum = 0;
+					var iDen = 0;
+					var sLastOU;
+
+					sReturn += '<table class="" style="width:100%;">';
+					sReturn += '<tbody>';
+
+					sReturn += '<tr>';
+					sReturn += '<td style="text-align:right;color:#000000;width:60px;"><b>Definition</b>:&nbsp;</td>';
+					sReturn += '<td style="" colspan=2>' + dxDescription + '<br></td>';
+					sReturn += '</tr>';
+					sReturn += '<tr>';
+					sReturn += '<td style="text-align:right;color:#000000;"><b>Formula</b>:&nbsp;</td>';
+					sReturn += '<td style="" colspan=2>[' + numeratorDescription + '] / [' + denominatorDescription + ']</td>';
+					sReturn += '</tr>';
+					sReturn += '<tr>';
+					sReturn += '<td style="text-align:right;color:#000000;"><b>Group</b>:&nbsp;</td>';
+					sReturn += '<td style="" colspan=2>' + dxGroup + '</td>';
+					sReturn += '</tr>';
+
+					sReturn += '<tr>';
+					sReturn += '<td colspan=3>&nbsp;</td>';
+					sReturn += '</tr>';
+
+					sReturn += '</tbody></table>';
+
+					$(sDestination).html(sReturn);
+
+				}
+
+				function LoadPrioritisedSummaryLeft(myData,sDestination){
+
+					var i;
+					var p;
+					var sReturn = '';
+					var iZs;
+					var sBGcol;
+					var iOpac;
+					var sCol;
+					var iIncr = 0;
+					var iPosition = 0;
+					var iNum = 0;
+					var iDen = 0;
+					var iLastValue = -123456789;
+					var sLastOU;
+					var myNewArr = [];
+
+					sReturn += '<table class="" style="width:100%;"><tbody><tr><td>&nbsp;</td>';
+
+					var objNames = JSON.parse(JSON.stringify(myData.metaData.items));
+
+					for(i = 0; i < 2; i++)  //2: myData.headers.length
+					{
+						sReturn += ((myData.headers[i].name == 'ou') ? '<td style="height:25px;vertical-align:middle;">&nbsp;<b>Significant</b>&nbsp;</td>' : ((myData.headers[i].	name != 'dx') ? '<td style="height:25px;vertical-align:middle;text-align:right;">' + dxTypeName + '&nbsp;</td>' : ''));
+					}
+					
+					for(i = 0; i < myData.rows.length; i++) {
+						
+						if (myData.rows[i] != undefined)
+						{
+							/* IGNORE 'PARENT' REGION data and ONLY process chosen DX uid */
+							if (myData.rows[i][1] != OUid && myData.rows[i][0] == g_dxUID)
+							{
+								iZs = ((parseFloat(myData.rows[i][2]) - parseFloat(g_RegAvg))/parseFloat(g_iStDev));
+								//console.log('iZs: ' + iZs);
+								{
+									sBGcol = LookupBGColor(iZs);
+									iOpac = (Math.abs(iZs) / (( Math.abs(iScaleAbsLow) > Math.abs(iScaleAbsHigh)) ? Math.abs(iScaleAbsLow) : Math.abs(iScaleAbsHigh) )).toFixed(2);
+									myNewArr.push({
+										dx: myData.rows[i][0],
+										ou: myData.rows[i][1],
+										value: myData.rows[i][2],
+										zscore: iZs,
+										volume: (myData.rows[i][3]/iGTnum*100),
+										coverage: (myData.rows[i][4]/iGTden*100),
+										bgcol: sBGcol,
+										opacity: iOpac
+									});
+								}
+							}
+						}
+					}
+
+					var sort_by = function(field, reverse, primer){
+
+					   var key = primer ? 
+						   function(x) {return primer(x[field])} : 
+						   function(x) {return x[field]};
+
+					   reverse = !reverse ? 1 : -1;
+
+					   return function (a, b) {
+						   return a = key(a), b = key(b), reverse * ((a > b) - (b > a));
+						 } 
+					}
+
+					//if (iRank == 'significance')
+					{
+						myNewArr.sort(sort_by('volume', true, parseFloat));
+					}
+					/*else
+					{
+						if (iGrowthSentiment == -1){
+							myNewArr.sort(sort_by('value', false, parseFloat));
+						}
+						else{
+							if (iGrowthSentiment == 1){
+								myNewArr.sort(sort_by('value', true, parseFloat));
+							}
+							else{
+								myNewArr.sort(sort_by('value', true, parseFloat));
+							}
+						}
+					}*/
+					
+					for(i = 0; i < myNewArr.length; i++) {
+
+						iPosition += 1;
+
+						if (Math.abs(parseFloat(myNewArr[i].zscore)) >= 1)
+						{
+							sReturn += '<tr>';
+							sReturn += '<td title="' + parseFloat(myNewArr[i].zscore).toFixed(iDecLim).replace('.00','') + 'σ" style="background-Color:' + myNewArr[i].bgcol + ';Opacity:' + myNewArr[i].opacity + ';"><div style="cursor:default;opacity:1;font-size:8pt;font-weight:700;text-align:center;width:18px;">' + ((parseFloat(iLastValue) == parseFloat(myNewArr[i].value)) ? '' : iPosition)  + '</div></td>';
+							sReturn += '<td style="padding:1px;">' + ReturnLookupName(objNames,myNewArr[i].ou) + '</td>';
+							//sReturn += '<td><div style="color:#0048FF;text-align:right;">&nbsp;<a href="generateHtmlReport.action?uid=' + rpUID + '&pe=' + peFilter + '&ou=' +  myNewArr[i].ou + '&dx=' +  myNewArr[i].dx + '&pavg=' + g_RegAvg + '&pstd=' + g_iStDev + '">' + myNewArr[i].value + '</a>&nbsp;</div></td>';
+							sReturn += '<td><div style="color:#0048FF;text-align:right;">&nbsp;<a href="leaflet_zscore.htm?source=' + sc +'&pe=' + peFilter + '&ou=' +  myNewArr[i].ou + '&dx=' +  myNewArr[i].dx + '&oulevel=' + (parseFloat(OUoutputLevel) + 1) + '&pstd=' + g_iStDev + '&dxval=' + g_RegAvg + '&pname=' + OUname + '">' + myNewArr[i].value + '</a>&nbsp;</div></td>';
+							sReturn += '</tr>';
+							iLastValue = parseFloat(myNewArr[i].value);
+						}
+
+					}
+
+					sReturn += '</tbody></table>';
+
+					$(sDestination).html(sReturn);
+
+					function LookupBGColor(d) {
+
+						for (var i = 0; i < LegendCols.length; i++) {
+							// test > current value && less than next value
+							if ((parseFloat(d) >= parseFloat(LegendRangeTestValues[i])) && (parseFloat(d) < parseFloat(LegendRangeTestValues[i+1]))){
+								return LegendCols[i];
+								break;
+							}
+						}
+					}
+				}
+				
+				function CreatePerformanceSentimentCategories(geoFeatures,sDestination){
+
+					var i;
+					var p;
+					var sReturn = '';
+					var iZs;
+					var sBGcol;
+					var iOpac;
+					var sCol;
+					var iouCol;
+					var ipeCol;
+					var idxCol;
+					var icoCol;
+					var iIncr = 0;
+					var iPosition = 0;
+					var iVal;
+					var iNum = 0;
+					var iDen = 0;
+					var myNewArr = [];
+
+					var iLookup = 0;
+					var sTitle;
+					var iRunNum = 0;
+					var iRunDenom = 0;
+					var iPosZscore = 0;
+					var iNegZscore = 0;
+					var iZeroNumerators = 0;
+					var iZeroDenominators = 0;
+					var iModZscore = 0;
+					var sNums = '';
+					var sDenoms = '';
+					var FinNum = 0;
+					var FinDen = 0;
+					var sLocalOU = '';
+					var IndLocalVal = 0;
+
+					for (var i = 0; i < geoFeatures.features.length; i++) {
+						/* IGNORE 'PARENT' REGION data */
+						if (geoFeatures.features[i].properties['id'] != OUid)
+						{					
+							iVal = geoFeatures.features[i].properties['value'];
+							iNum = geoFeatures.features[i].properties['numerator'];
+							iDen = geoFeatures.features[i].properties['denominator'];
+							iZs = geoFeatures.features[i].properties['ZScore'];
+							iPosZscore = ((iPosZscore == 0) ? ((iZs >= 1) ? 1 : 0) : iPosZscore);
+							iNegZscore = ((iNegZscore == 0) ? ((iZs <= -1) ? 1 : 0) : iNegZscore);
+							iZeroNumerators = ((iZeroNumerators == 0) ? (((iNum) == 0) ? 1 : 0) : iZeroNumerators);
+							iZeroDenominators = ((iZeroDenominators == 0) ? (((iDen) == 0) ? 1 : 0) : iZeroDenominators);
+							iModZscore = ((iModZscore == 0) ? ((Math.abs(iZs) < 1) ? 1 : 0) : iModZscore);
+							{
+								sBGcol = LookupBGColor(iZs);
+								iOpac = (Math.abs(iZs) / (( Math.abs(iScaleAbsLow) > Math.abs(iScaleAbsHigh)) ? Math.abs(iScaleAbsLow) : Math.abs(iScaleAbsHigh) )).toFixed(2);
+								myNewArr.push({
+									dx: g_dxUID,
+									ou: geoFeatures.features[i].properties['id'],
+									value: iVal,
+									numerator: iNum,
+									denominator: iDen,
+									zscore: iZs,
+									volume: (iNum/iGTnum*100),
+									coverage: (iDen/iGTden*100),
+									bgcol: sBGcol,
+									opacity: iOpac
+								});
+								if (iCalcNewScore != 0){
+									FinNum += ((((iNum).length) != 0) ? (parseFloat(iVal) > AbsMin ? parseFloat(iNum) : 0) : 0);
+									FinDen += ((((iDen).length) != 0) ? (parseFloat(iVal) < AbsMax ? parseFloat(iDen) : 0) : 0);
+								}
+							}
+						}
+
+					}
+
+					var sort_by = function(field, reverse, primer){
+
+					   var key = primer ? 
+						   function(x) {return primer(x[field])} : 
+						   function(x) {return x[field]};
+
+					   reverse = !reverse ? 1 : -1;
+
+					   return function (a, b) {
+						   return a = key(a), b = key(b), reverse * ((a > b) - (b > a));
+						 } 
+					}
+
+					/* Always sort by numerator scale for 'performance impact' tables */
+					myNewArr.sort(sort_by('numerator', true, parseFloat));
+
+					sReturn = '<br>';
+
+					sReturn += '<table class="" style="width:100%" border=0 cellspacing=0 cellpadding=0><tbody>';
+
+					if (iNegZscore == 1){
+
+						var iLastValue = -9876543210;
+
+						sTitle = ((iGrowthSentiment == -1) ? 'OPTIMISM: Positive Impact Areas' : ((iGrowthSentiment == 1) ? 'PESSIMISM: Negative Impact Areas' : 'Below Average') );
+						sTitle += ' [< ' +parseFloat(parseFloat(g_RegAvg)-parseFloat(g_iStDev)).toFixed(1) + dxTypeName + ']'; //((iGrowthSentiment == -1) ? ' [ < ' + parseFloat(parseFloat(g_RegAvg)-parseFloat(g_iStDev)).toFixed(1) : ((iGrowthSentiment == 1) ? ' [ < ' + parseFloat(parseFloat(g_RegAvg)-parseFloat(g_iStDev)).toFixed(1) : (' [ < ' + parseFloat(parseFloat(g_RegAvg)-parseFloat(g_iStDev)))));
+
+						sReturn += '<tr style="vertical-align:middle;">';
+						sReturn += ' <td colspan=12 class="rounded" style="background-Color:#A8A9AD;border:1px solid #ff;color:#ffffff;font-size:10pt;font-weight:400;padding:6px;vertical-align:middle;">&nbsp;' + sTitle + '&nbsp;</td></tr>';
+						sReturn += '<tr style="vertical-align:middle;height:30px;">';
+						sReturn += ' <td style="width:25px;">&nbsp;</td>';
+						sReturn += ' <td style="height:40px;vertical-align:middle;">&nbsp;<b>' + OUlevelArr[OUoutputLevel-1] + '</b></td>';
+						sReturn += ' <td style="height:40px;vertical-align:middle;text-align:center;" nowrap colspan=5><b>' + peFilter + ' : ' + g_dxName + '</b></td>';
+						sReturn += ' <td style="width:70px;vertical-align:middle;text-align:right;" nowrap><b>&nbsp;&nbsp;&nbsp;Z-Score&nbsp;</b></td>';
+						sReturn += ' <td style="width:100px;height:40px;vertical-align:middle;text-align:right;" title="Influence of indicator score on overall [' + g_RegAvg + ']">&nbsp;<b>' + ((iGrowthSentiment == -1) ? 'NUM %' : ((iGrowthSentiment == 1) ? 'NUM %' : 'NUM %') ) + '</b>&nbsp;</td>';
+						sReturn += ' <td style="width:10px;font-size:14pt;font-weight:700;">&nbsp;&darr;&nbsp;</td>';
+						sReturn += ' <td style="width:100px;text-align:right;vertical-align:middle;"><b>&nbsp;DEN %&nbsp;</b></td>';
+						sReturn += ' <td style="width:230px;text-align:left;vertical-align:middle;">&nbsp;</td>';
+						sReturn += '</tr>';
+
+						iPosition = 0;
+						iRunNum = 0;
+						iRunDenom = 0;
+
+						for(i = 0; i < myNewArr.length; i++) {
+
+							//if ((parseFloat(myNewArr[i].zscore) <= -1) && ((myNewArr[i].numerator).length > 0) && ((myNewArr[i].denominator).length > 0))
+							if ((parseFloat(myNewArr[i].zscore) <= -1) && ((myNewArr[i].numerator) >= 0))
+							{
+								iPosition += 1;
+								sLocalOU = ReturnLookupName(objNames,myNewArr[i].ou);
+								//console.log(myNewArr.length + ' sLocalOU: ' + sLocalOU + ' (' + myNewArr[i].ou + ')');
+								IndLocalVal = (((myNewArr[i].value).toString().length > 0) ? parseFloat(myNewArr[i].value).toFixed(1).replace('.0','') : '-');
+								sReturn += '<tr style="background-Color:#E7E7E8;">';
+								sReturn += ' <td title="' + parseFloat(myNewArr[i].zscore).toFixed(2).replace('.00','') + 'σ" style="height:26px;vertical-align:middle;border-bottom:4px solid #ffffff;background-Color:' + myNewArr[i].bgcol + ';Opacity:' + myNewArr[i].opacity + ';"><div style="cursor:default;opacity:1;font-size:8pt;font-weight:700;text-align:center;">' + ((parseFloat(iLastValue) == parseFloat(myNewArr[i].value)) ? '' : iPosition) + '</div></td>';
+								sReturn += ' <td style="vertical-align:middle;border-bottom:4px solid #ffffff;overflow:hidden;" nowrap>&nbsp;' + sLocalOU + '&nbsp;</td>';
+								sReturn += ' <td style="vertical-align:middle;border-bottom:4px solid #ffffff;text-align:right">&nbsp;<a href="leaflet_zscore.htm?source=' + sc +'&pe=' + peFilter + '&ou=' +  myNewArr[i].ou + '&dx=' +  myNewArr[i].dx + '&oulevel=' + (parseFloat(OUoutputLevel) + 1) + '&pstd=' + g_iStDev + '&dxval=' + IndLocalVal + '&pname=' + sLocalOU + '">' + IndLocalVal + '</a>&nbsp;</td>';
+								sReturn += ' <td style="vertical-align:middle;border-bottom:4px solid #ffffff;padding:2px;">&nbsp;' + dxTypeName + '&nbsp;</td>';
+								sReturn += ' <td style="vertical-align:middle;border-bottom:4px solid #ffffff;text-align:right;">(&nbsp;' + (((myNewArr[i].numerator).toString().length > 0) ? parseFloat(myNewArr[i].numerator).toFixed(1).replace('.0','') : '-') + '</td>';
+								sReturn += ' <td style="vertical-align:middle;border-bottom:4px solid #ffffff;text-align:center;">&nbsp;/&nbsp;</td>';
+								sReturn += ' <td style="vertical-align:middle;border-bottom:4px solid #ffffff;text-align:left">' + parseFloat(myNewArr[i].denominator).toFixed(1).replace('.0','') + '&nbsp;)</td>';
+								sReturn += ' <td style="vertical-align:middle;border-bottom:4px solid #ffffff;text-align:right;">&nbsp;' + parseFloat(myNewArr[i].zscore).toFixed(2).replace('.00','') + '&nbsp;</td>';
+								sReturn += ' <td style="vertical-align:middle;border-bottom:4px solid #ffffff;font-size:9pt;text-align:right;">&nbsp;' + (parseFloat(myNewArr[i].numerator) / parseFloat(iGTnum) * 100).toFixed(2).replace('.00','') + '&nbsp;</td>';
+								sReturn += ' <td style="vertical-align:middle;border-bottom:4px solid #ffffff;text-align:left;">&nbsp;%&nbsp;</td>';
+								sReturn += ' <td style="vertical-align:middle;border-bottom:4px solid #ffffff;font-size:9pt;text-align:right;">&nbsp;' + (parseFloat(myNewArr[i].denominator) / parseFloat(iGTden) * 100).toFixed(2).replace('.00','') + '&nbsp;</td>';
+								sReturn += ' <td style="vertical-align:middle;border-bottom:4px solid #ffffff;text-align:left;">&nbsp;%&nbsp;</td>';
+								sReturn += '</tr>';
+								if ((myNewArr[i].numerator) > 0){
+									iRunNum += parseFloat(myNewArr[i].numerator);
+								}
+								if ((myNewArr[i].denominator) > 0){
+									iRunDenom += parseFloat(myNewArr[i].denominator);
+								}
+								iLastValue = parseFloat(myNewArr[i].value);
+							}
+						}
+
+						if (iRunDenom > 0){
+
+							sReturn += '<tr style="background-Color:#ffffff;">';
+							sReturn += ' <td style="height:26px;vertical-align:middle;">&nbsp;</td>';
+							sReturn += ' <td style="vertical-align:middle;text-align:right;">&nbsp;Group Average:&nbsp;</td>';
+							sReturn += ' <td style="vertical-align:middle;text-align:right;" title="' + iRunNum + '/' + iRunDenom + '"><span style="text-align:right;border-top:1px solid #808080;border-bottom:1px solid #808080;padding:2px;">&nbsp;' + (parseFloat(iRunNum) * parseFloat(indicatorTypeFactor) / parseFloat(iRunDenom)).toFixed(1).replace('.0','') + '&nbsp;</span></td>';
+							sReturn += ' <td style="vertical-align:middle;"><span style="border-top:1px solid #808080;border-bottom:1px solid #808080;padding:2px;">&nbsp;' + dxTypeName + '&nbsp;</span></td>';
+							sReturn += ' <td style="vertical-align:middle;text-align:right;">&nbsp;</td>';
+							sReturn += ' <td style="vertical-align:middle;text-align:center;">&nbsp;</td>';
+							sReturn += ' <td style="vertical-align:middle;text-align:left">&nbsp;</td>';
+							sReturn += ' <td style="vertical-align:middle;text-align:right;">&nbsp;' + parseFloat(((parseFloat(iRunNum) * parseFloat(indicatorTypeFactor) / parseFloat(iRunDenom)) - parseFloat(g_RegAvg)) / parseFloat(g_iStDev)).toFixed(2).replace('.00','') + '&nbsp;</td>';
+							sReturn += ' <td style="vertical-align:middle;font-size:9pt;text-align:right;">&nbsp;' + (parseFloat(iRunNum) / parseFloat(iGTnum) * 100).toFixed(2).replace('.00','') + '&nbsp;</td>';
+							sReturn += ' <td style="vertical-align:middle;text-align:left;">%&nbsp;</td>';
+							sReturn += ' <td style="vertical-align:middle;font-size:9pt;text-align:right;">&nbsp;' + (parseFloat(iRunDenom) / parseFloat(iGTden) * 100).toFixed(2).replace('.00','') + '&nbsp;</td>';
+							sReturn += ' <td style="vertical-align:middle;text-align:left;">%&nbsp;</td>';
+							sReturn += '</tr>';
+						}
+
+						sReturn += '<tr style="background-Color:#ffffff;"><td colspan=12 style="height:30px">&nbsp;</td></tr>';
+
+					}
+
+					if (iPosZscore == 1){
+					
+						var iLastValue = -123456789;
+
+						sTitle = ((iGrowthSentiment == 1) ? 'OPTIMISM: Positive Impact Areas' : ((iGrowthSentiment == -1) ? 'PESSIMISM: Negative Impact Areas' : 'Above Average') );
+						sTitle += ' [> ' +parseFloat(parseFloat(g_RegAvg)+parseFloat(g_iStDev)).toFixed(2) + dxTypeName + ']';
+
+						sReturn += '<tr style="background-Color:#B5BBC6;">';
+						sReturn += ' <td colspan=12 class="rounded" style="background-Color:#A8A9AD;color:#ffffff;border:1px solid #ff;font-size:10pt;font-weight:400;padding:6px;vertical-align:middle;">&nbsp;' + sTitle + '&nbsp;</td></tr>';
+						sReturn += '<tr style="vertical-align:middle;height:30px;">';
+						sReturn += ' <td style="width:25px;">&nbsp;</td>';
+						sReturn += ' <td style="height:40px;vertical-align:middle;">&nbsp;<b>' + OUlevelArr[OUoutputLevel-1] + '</b></td>';
+						sReturn += ' <td style="height:40px;vertical-align:middle;text-align:center;" nowrap colspan=5><b>' + peFilter + ' : ' + g_dxName + '</b></td>';
+						sReturn += ' <td style="width:70px;vertical-align:middle;text-align:right;" nowrap><b>&nbsp;&nbsp;&nbsp;Z-Score&nbsp;</b></td>';
+						sReturn += ' <td style="width:100px;height:40px;vertical-align:middle;text-align:right;" title="Influence of indicator score on overall [' + g_RegAvg + ']">&nbsp;<b>' + ((iGrowthSentiment == 1) ? 'NUM %' : ((iGrowthSentiment == -1) ? 'NUM %' : 'NUM %') ) +'</b>&nbsp;</td>';
+						sReturn += ' <td style="width:10px;font-size:14pt;font-weight:700;">&nbsp;&darr;&nbsp;</td>';
+						sReturn += ' <td style="width:100px;text-align:right;vertical-align:middle;"><b>&nbsp;DEN %&nbsp;</b></td>';
+						sReturn += ' <td style="width:230px;text-align:left;vertical-align:middle;">&nbsp;</td>';
+						sReturn += '</tr>';
+
+						iPosition = 0;
+						iRunNum = 0;
+						iRunDenom = 0;
+
+						for(i = 0; i < myNewArr.length; i++) {
+
+							//if (parseFloat(myNewArr[i].zscore) >= 1 && ((myNewArr[i].numerator).toString().length > 0) && ((myNewArr[i].denominator).toString().length > 0))
+							if (parseFloat(myNewArr[i].zscore) >= 1 && ((myNewArr[i].numerator) >= 0))
+							{
+								iPosition += 1;
+								sLocalOU = ReturnLookupName(objNames,myNewArr[i].ou);
+								IndLocalVal = (((myNewArr[i].value).toString().length > 0) ? parseFloat(myNewArr[i].value).toFixed(1).replace('.0','') : '-');
+								sReturn += '<tr style="background-Color:#E7E7E8;">';
+								sReturn += ' <td title="' + parseFloat(myNewArr[i].zscore).toFixed(2).replace('.00','') + 'σ" style="height:26px;vertical-align:middle;border-bottom:4px solid #ffffff;background-Color:' + myNewArr[i].bgcol + ';Opacity:' + myNewArr[i].opacity + ';"><div style="cursor:default;opacity:1;font-size:8pt;font-weight:700;text-align:center;">' + ((parseFloat(iLastValue) == parseFloat(myNewArr[i].value)) ? '' : iPosition) + '</div></td>';
+								sReturn += ' <td style="vertical-align:middle;border-bottom:4px solid #ffffff;overflow:hidden;" nowrap>&nbsp;' + sLocalOU + '&nbsp;</td>';
+								sReturn += ' <td style="vertical-align:middle;border-bottom:4px solid #ffffff;text-align:right">&nbsp;<a href="leaflet_zscore.htm?source=' + sc +'&pe=' + peFilter + '&ou=' +  myNewArr[i].ou + '&dx=' +  myNewArr[i].dx + '&oulevel=' + (parseFloat(OUoutputLevel) + 1) + '&pstd=' + g_iStDev + '&dxval=' + IndLocalVal + '&pname=' + sLocalOU + '">' + IndLocalVal + '</a>&nbsp;</td>';
+								sReturn += ' <td style="vertical-align:middle;border-bottom:4px solid #ffffff;padding:2px;">&nbsp;' + dxTypeName + '&nbsp;</td>';
+								sReturn += ' <td style="vertical-align:middle;border-bottom:4px solid #ffffff;text-align:right;">(&nbsp;' + (((myNewArr[i].numerator).toString().length > 0) ? parseFloat(myNewArr[i].numerator).toFixed(1).replace('.0','') : '-') + '</td>';
+								sReturn += ' <td style="vertical-align:middle;border-bottom:4px solid #ffffff;text-align:center;">&nbsp;/&nbsp;</td>';
+								sReturn += ' <td style="vertical-align:middle;border-bottom:4px solid #ffffff;text-align:left">' + parseFloat(myNewArr[i].denominator).toFixed(1).replace('.0','') + '&nbsp;)</td>';
+								sReturn += ' <td style="vertical-align:middle;border-bottom:4px solid #ffffff;text-align:right;">&nbsp;' + parseFloat(myNewArr[i].zscore).toFixed(2).replace('.00','') + '&nbsp;</td>';
+								sReturn += ' <td style="vertical-align:middle;border-bottom:4px solid #ffffff;font-size:9pt;text-align:right;">&nbsp;' + (parseFloat(myNewArr[i].numerator) / parseFloat(iGTnum) * 100).toFixed(2).replace('.00','') + '&nbsp;</td>';
+								sReturn += ' <td style="vertical-align:middle;border-bottom:4px solid #ffffff;text-align:left;">&nbsp;%&nbsp;</td>';
+								sReturn += ' <td style="vertical-align:middle;border-bottom:4px solid #ffffff;font-size:9pt;text-align:right;">&nbsp;' + (parseFloat(myNewArr[i].denominator) / parseFloat(iGTden) * 100).toFixed(2).replace('.00','') + '&nbsp;</td>';
+								sReturn += ' <td style="vertical-align:middle;border-bottom:4px solid #ffffff;text-align:left;">&nbsp;%&nbsp;</td>';
+								sReturn += '</tr>';
+								if ((myNewArr[i].numerator) > 0){
+									iRunNum += parseFloat(myNewArr[i].numerator);
+								}
+								if ((myNewArr[i].denominator) > 0){
+									iRunDenom += parseFloat(myNewArr[i].denominator);
+								}
+								iLastValue = parseFloat(myNewArr[i].value);
+							}
+						}
+						
+						if (iRunDenom > 0){
+
+							sReturn += '<tr style="background-Color:#ffffff;">';
+							sReturn += ' <td style="height:26px;vertical-align:middle;">&nbsp;</td>';
+							sReturn += ' <td style="vertical-align:middle;text-align:right;">&nbsp;Group Average:&nbsp;</td>';
+							sReturn += ' <td style="vertical-align:middle;text-align:right;" title="' + iRunNum + '/' + iRunDenom + '"><span style="text-align:right;border-top:1px solid #808080;border-bottom:1px solid #808080;padding:2px;">&nbsp;' + (parseFloat(iRunNum) * parseFloat(indicatorTypeFactor) / parseFloat(iRunDenom)).toFixed(1).replace('.0','') + '&nbsp;</span></td>';
+							sReturn += ' <td style="vertical-align:middle;"><span style="border-top:1px solid #808080;border-bottom:1px solid #808080;padding:2px;">&nbsp;' + dxTypeName + '&nbsp;</span></td>';
+							sReturn += ' <td style="vertical-align:middle;text-align:right;">&nbsp;</td>';
+							sReturn += ' <td style="vertical-align:middle;text-align:center;">&nbsp;</td>';
+							sReturn += ' <td style="vertical-align:middle;text-align:left">&nbsp;</td>';
+							sReturn += ' <td style="vertical-align:middle;text-align:right;">&nbsp;' + parseFloat(((parseFloat(iRunNum) * parseFloat(indicatorTypeFactor) / parseFloat(iRunDenom)) - parseFloat(g_RegAvg)) / parseFloat(g_iStDev)).toFixed(2).replace('.00','') + '&nbsp;</td>';
+							sReturn += ' <td style="vertical-align:middle;font-size:9pt;text-align:right;">&nbsp;' + (parseFloat(iRunNum) / parseFloat(iGTnum) * 100).toFixed(2).replace('.00','') + '&nbsp;</td>';
+							sReturn += ' <td style="vertical-align:middle;text-align:left;">%&nbsp;</td>';
+							sReturn += ' <td style="vertical-align:middle;font-size:9pt;text-align:right;">&nbsp;' + (parseFloat(iRunDenom) / parseFloat(iGTden) * 100).toFixed(2).replace('.00','') + '&nbsp;</td>';
+							sReturn += ' <td style="vertical-align:middle;text-align:left;">%&nbsp;</td>';
+							sReturn += '</tr>';
+						}
+
+						sReturn += '<tr style="background-Color:#ffffff;"><td colspan=12 style="height:30px">&nbsp;</td></tr>';
+
+					}
+
+					if (iModZscore > 0){
+
+						sTitle = 'MODERATE OUTCOMES';
+						sTitle += ' [' + (parseFloat((parseFloat(g_RegAvg) - parseFloat(g_iStDev))) < 0 ? 0 : parseFloat((parseFloat(g_RegAvg) - parseFloat(g_iStDev))).toFixed(1).replace('.0',''))   + ' - ' + parseFloat((parseFloat(g_RegAvg) + parseFloat(g_iStDev))).toFixed(1).replace('.0','') + dxTypeName + ']';
+
+						sReturn += '<tr style="background-Color:#B5BBC6;">';
+						sReturn += ' <td colspan=12 class="rounded" style="background-Color:#A8A9AD;color:#ffffff;border:1px solid #ff; font-size:10pt;font-weight:400;padding:6px;vertical-align:middle;">&nbsp;' + sTitle + '&nbsp;</td></tr>';
+						sReturn += '<tr style="vertical-align:middle;height:30px;">';
+						sReturn += ' <td style="width:25px;">&nbsp;</td>';
+						sReturn += ' <td style="height:40px;vertical-align:middle;">&nbsp;<b>' + OUlevelArr[OUoutputLevel-1] + '</b></td>';
+						sReturn += ' <td style="height:40px;vertical-align:middle;text-align:center;" nowrap colspan=5><b>' + peFilter + ' : ' + g_dxName + '</b></td>';
+						sReturn += ' <td style="width:70px;vertical-align:middle;text-align:right;" nowrap><b>&nbsp;&nbsp;&nbsp;Z-Score&nbsp;</b></td>';
+						sReturn += ' <td style="width:100px;height:40px;vertical-align:middle;text-align:right;" title="Influence of indicator score on overall [' + g_RegAvg + ']">&nbsp;<b>NUM %</b>&nbsp;</td>';
+						sReturn += ' <td style="width:10px;font-size:14pt;font-weight:700;">&nbsp;&darr;&nbsp;</td>';
+						sReturn += ' <td style="width:100px;text-align:right;vertical-align:middle;"><b>&nbsp;DEN %&nbsp;</b></td>';
+						sReturn += ' <td style="width:230px;text-align:left;vertical-align:middle;">&nbsp;</td>';
+						sReturn += '</tr>';
+
+						iPosition = 0;
+						iRunNum = 0;
+						iRunDenom = 0;
+
+						for(i = 0; i < myNewArr.length; i++) {
+
+							if ((Math.abs(parseFloat(myNewArr[i].zscore)) < 1) && ((myNewArr[i].numerator) >= 0))
+							{
+								iPosition += 1;
+								sLocalOU = ReturnLookupName(objNames,myNewArr[i].ou);
+								IndLocalVal = (((myNewArr[i].value).toString().length > 0) ? parseFloat(myNewArr[i].value).toFixed(1).replace('.0','') : '-');
+								sReturn += '<tr style="background-Color:#E7E7E8;">';
+								sReturn += ' <td title="' + parseFloat(myNewArr[i].zscore).toFixed(2).replace('.00','') + 'σ" style="height:26px;vertical-align:middle;border-bottom:4px solid #ffffff;background-Color:#F5F5F5;Opacity:1;color:#C0C0C0"><div style="cursor:default;opacity:1;font-size:8pt;font-weight:700;text-align:center;">' + iPosition + '</div></td>';
+								sReturn += ' <td style="vertical-align:middle;border-bottom:4px solid #ffffff;overflow:hidden;" nowrap>&nbsp;' + sLocalOU + '&nbsp;</td>';
+								//sReturn += ' <td style="vertical-align:middle;border-bottom:4px solid #ffffff;text-align:right">&nbsp;' + (((myNewArr[i].value).toString().length > 0) ? parseFloat(myNewArr[i].value).toFixed(1).replace('.0','') : '') + '&nbsp;</td>';
+								sReturn += ' <td style="vertical-align:middle;border-bottom:4px solid #ffffff;text-align:right">&nbsp;<a href="leaflet_zscore.htm?source=' + sc +'&pe=' + peFilter + '&ou=' +  myNewArr[i].ou + '&dx=' +  myNewArr[i].dx + '&oulevel=' + (parseFloat(OUoutputLevel) + 1) + '&pstd=' + g_iStDev + '&dxval=' + IndLocalVal + '&pname=' + sLocalOU + '">' + IndLocalVal + '</a>&nbsp;</td>';
+								sReturn += ' <td style="vertical-align:middle;border-bottom:4px solid #ffffff;padding:2px;">&nbsp;' + dxTypeName + '&nbsp;</td>';
+								sReturn += ' <td style="vertical-align:middle;border-bottom:4px solid #ffffff;text-align:right;">(&nbsp;' + (((myNewArr[i].numerator).toString().length > 0) ? parseFloat(myNewArr[i].numerator).toFixed(1).replace('.0','') : '') + '</td>';
+								sReturn += ' <td style="vertical-align:middle;border-bottom:4px solid #ffffff;text-align:center;">&nbsp;/&nbsp;</td>';
+								sReturn += ' <td style="vertical-align:middle;border-bottom:4px solid #ffffff;text-align:left">' + parseFloat(myNewArr[i].denominator).toFixed(1).replace('.0','') + '&nbsp;)</td>';
+								sReturn += ' <td style="vertical-align:middle;border-bottom:4px solid #ffffff;text-align:right;">&nbsp;' + parseFloat(myNewArr[i].zscore).toFixed(2).replace('.00','') + '&nbsp;</td>';
+								sReturn += ' <td style="vertical-align:middle;border-bottom:4px solid #ffffff;font-size:9pt;text-align:right;">&nbsp;' + (parseFloat(myNewArr[i].numerator) / parseFloat(iGTnum) * 100).toFixed(2).replace('.00','') + '&nbsp;</td>';
+								sReturn += ' <td style="vertical-align:middle;border-bottom:4px solid #ffffff;text-align:left;">&nbsp;%&nbsp;</td>';
+								sReturn += ' <td style="vertical-align:middle;border-bottom:4px solid #ffffff;font-size:9pt;text-align:right;">&nbsp;' + (parseFloat(myNewArr[i].denominator) / parseFloat(iGTden) * 100).toFixed(2).replace('.00','') + '&nbsp;</td>';
+								sReturn += ' <td style="vertical-align:middle;border-bottom:4px solid #ffffff;text-align:left;">&nbsp;%&nbsp;</td>';
+								sReturn += '</tr>';
+								if ((myNewArr[i].numerator) > 0){
+									iRunNum += parseFloat(myNewArr[i].numerator);
+								}
+								if ((myNewArr[i].denominator) > 0){
+									iRunDenom += parseFloat(myNewArr[i].denominator);
+								}
+							}
+						}
+
+						if (iRunDenom > 0){
+
+							sReturn += '<tr style="background-Color:#ffffff;">';
+							sReturn += ' <td style="height:26px;vertical-align:middle;">&nbsp;</td>';
+							sReturn += ' <td style="vertical-align:middle;text-align:right;">&nbsp;Group Average:&nbsp;</td>';
+							sReturn += ' <td style="vertical-align:middle;text-align:right;" title="' + iRunNum + '/' + iRunDenom + '"><span style="text-align:right;border-top:1px solid #808080;border-bottom:1px solid #808080;padding:2px;">&nbsp;' + (parseFloat(iRunNum) * parseFloat(indicatorTypeFactor) / parseFloat(iRunDenom)).toFixed(1).replace('.0','') + '&nbsp;</span></td>';
+							sReturn += ' <td style="vertical-align:middle;"><span style="border-top:1px solid #808080;border-bottom:1px solid #808080;padding:2px;">&nbsp;' + dxTypeName + '&nbsp;</span></td>';
+							sReturn += ' <td style="vertical-align:middle;text-align:right;">&nbsp;</td>';
+							sReturn += ' <td style="vertical-align:middle;text-align:center;">&nbsp;</td>';
+							sReturn += ' <td style="vertical-align:middle;text-align:left">&nbsp;</td>';
+							sReturn += ' <td style="vertical-align:middle;text-align:right;">&nbsp;' + parseFloat(((parseFloat(iRunNum) * parseFloat(indicatorTypeFactor) / parseFloat(iRunDenom)) - parseFloat(g_RegAvg)) / parseFloat(g_iStDev)).toFixed(2).replace('.00','') + '&nbsp;</td>';
+							sReturn += ' <td style="vertical-align:middle;font-size:9pt;text-align:right;">&nbsp;' + (parseFloat(iRunNum) / parseFloat(iGTnum) * 100).toFixed(2).replace('.00','') + '&nbsp;</td>';
+							sReturn += ' <td style="vertical-align:middle;text-align:left;">%&nbsp;</td>';
+							sReturn += ' <td style="vertical-align:middle;font-size:9pt;text-align:right;">&nbsp;' + (parseFloat(iRunDenom) / parseFloat(iGTden) * 100).toFixed(2).replace('.00','') + '&nbsp;</td>';
+							sReturn += ' <td style="vertical-align:middle;text-align:left;">%&nbsp;</td>';
+							sReturn += '</tr>';
+
+							sReturn += '<tr style="background-Color:#ffffff;"><td colspan=12 style="height:30px">&nbsp;</td></tr>';
+						}
+					}
+
+					if (iZeroNumerators == 1){
+					
+						myNewArr.sort(sort_by('denominator', true, parseFloat));
+
+						var iLastValue = -123456789;
+
+						sTitle = ((iGrowthSentiment == -1) ? 'SUCCESS STORIES?: no reported data/cases for [' + numeratorDescription + ']' : ((iGrowthSentiment == 1) ? 'MISSED OPPORTUNITIES: no reported data/cases for [' + numeratorDescription + ']' : 'No reported data/cases for [' + numeratorDescription + ']') );
+
+						sReturn += '<tr style="background-Color:#B5BBC6;">';
+						sReturn += ' <td colspan=12 class="rounded" style="background-Color:#A8A9AD;border:1px solid #ff;color:#ffffff;font-size:10pt;font-weight:400;padding:6px;vertical-align:middle;">&nbsp;' + sTitle + '&nbsp;</td></tr>';
+						sReturn += '<tr style="vertical-align:middle;height:30px;">';
+						sReturn += ' <td style="width:25px;">&nbsp;</td>';
+						sReturn += ' <td style="height:40px;vertical-align:middle;">&nbsp;<b>' + OUlevelArr[OUoutputLevel-1] + '</b></td>';
+						sReturn += ' <td style="height:40px;vertical-align:middle;text-align:center;" nowrap colspan=5><b>' + peFilter + ' : ' + g_dxName + '</b></td>';
+						sReturn += ' <td style="width:70px;vertical-align:middle;text-align:right;" nowrap><b>&nbsp;&nbsp;&nbsp;Z-Score&nbsp;</b></td>';
+						sReturn += ' <td style="width:100px;height:40px;vertical-align:middle;text-align:right;" title="Influence of indicator score on overall [' + g_RegAvg + ']">&nbsp;<b>NUM %</b>&nbsp;</td>';
+						sReturn += ' <td style="width:10px;font-size:14pt;font-weight:700;">&nbsp;&darr;&nbsp;</td>';
+						sReturn += ' <td style="width:100px;text-align:right;vertical-align:middle;"><b>&nbsp;DEN %&nbsp;</b></td>';
+						sReturn += ' <td style="width:230px;text-align:left;vertical-align:middle;">&nbsp;</td>';
+						sReturn += '</tr>';
+
+						iPosition = 0;
+						iRunNum = 0;
+						iRunDenom = 0;
+
+						for(i = 0; i < myNewArr.length; i++) {
+
+							if (((myNewArr[i].numerator) == 0) && (myNewArr[i].denominator) > 0)
+							{
+								iPosition += 1;
+								sReturn += '<tr style="background-Color:#E7E7E8;">';
+								//if (myNewArr[i].denominator).toString().length > 0){
+									sReturn += ' <td title="' + parseFloat(myNewArr[i].zscore).toFixed(2).replace('.00','') + 'σ" style="height:26px;vertical-align:middle;border-bottom:4px solid #ffffff;background-Color:' + ((iGrowthSentiment == -1) ? '#3A5C8A' : myNewArr[i].bgcol) + ';Opacity:0.8;"><div style="cursor:default;opacity:1;font-size:8pt;font-weight:700;text-align:center;color:#ffffff;">' + ((parseFloat(iLastValue) == parseFloat(myNewArr[i].value)) ? '' : iPosition) + '</div></td>';
+								/*}
+								else{
+									sReturn += ' <td title="' + parseFloat(myNewArr[i].zscore).toFixed(2).replace('.00','') + 'σ" style="height:26px;vertical-align:middle;border-bottom:4px solid #ffffff;background-Color:#3A5C8A;Opacity:0.8;color:#F5F5F5"><div style="cursor:default;opacity:1;font-size:8pt;font-weight:700;text-align:center;">' + ((parseFloat(iLastValue) == parseFloat(myNewArr[i].denominator)) ? '' : iPosition) + '</div></td>';
+								}*/
+								sReturn += ' <td style="vertical-align:middle;border-bottom:4px solid #ffffff;overflow:hidden;" nowrap><span style="">&nbsp;' + ReturnLookupName(objNames,myNewArr[i].ou) + '&nbsp;</span></td>';
+								//sReturn += ' <td style="vertical-align:middle;border-bottom:4px solid #ffffff;text-align:right">&nbsp;' + (((myNewArr[i].value).toString().length > 0) ? parseFloat(myNewArr[i].value).toFixed(1).replace('.0','') : '') + '&nbsp;</td>';
+								sReturn += ' <td style="vertical-align:middle;border-bottom:4px solid #ffffff;text-align:right">&nbsp;<a href="leaflet_zscore.htm?source=' + sc +'&pe=' + peFilter + '&ou=' +  myNewArr[i].ou + '&dx=' +  myNewArr[i].dx + '&oulevel=' + (parseFloat(OUoutputLevel) + 1) + '&pstd=' + g_iStDev + '&dxval=' + g_RegAvg + '&pname=' + OUname + '">' + (((myNewArr[i].value).toString().length > 0) ? parseFloat(myNewArr[i].value).toFixed(1).replace('.0','') : '-') + '</a>&nbsp;</td>';
+								sReturn += ' <td style="vertical-align:middle;border-bottom:4px solid #ffffff;padding:2px;">&nbsp;' + dxTypeName + '&nbsp;</td>';
+								sReturn += ' <td style="vertical-align:middle;border-bottom:4px solid #ffffff;text-align:right;">(&nbsp;' + (((myNewArr[i].numerator).toString().length > 0) ? parseFloat(myNewArr[i].numerator).toFixed(1).replace('.0','') : '') + '</td>';
+								sReturn += ' <td style="vertical-align:middle;border-bottom:4px solid #ffffff;text-align:center;">&nbsp;/&nbsp;</td>';
+								sReturn += ' <td style="vertical-align:middle;border-bottom:4px solid #ffffff;text-align:left">' + parseFloat(myNewArr[i].denominator).toFixed(1).replace('.0','') + '&nbsp;)</td>';
+								sReturn += ' <td style="vertical-align:middle;border-bottom:4px solid #ffffff;text-align:right;">&nbsp;</td>';
+								sReturn += ' <td style="vertical-align:middle;border-bottom:4px solid #ffffff;font-size:9pt;text-align:right;">&nbsp;</td>';
+								sReturn += ' <td style="vertical-align:middle;border-bottom:4px solid #ffffff;text-align:left;">&nbsp;</td>';
+								sReturn += ' <td style="vertical-align:middle;border-bottom:4px solid #ffffff;font-size:9pt;text-align:right;">&nbsp;' + (parseFloat(myNewArr[i].denominator) / parseFloat(iGTden) * 100).toFixed(2).replace('.00','') + '&nbsp;</td>';
+								sReturn += ' <td style="vertical-align:middle;border-bottom:4px solid #ffffff;text-align:left;">&nbsp;%&nbsp;</td>';
+								sReturn += '</tr>';
+								if ((myNewArr[i].denominator) > 0){
+									iRunDenom += parseFloat(myNewArr[i].denominator);
+								}
+								iLastValue = parseFloat(myNewArr[i].denominator);
+							}
+						}
+
+						if (iRunDenom > 0){
+
+							sReturn += '<tr style="background-Color:#ffffff;">';
+							sReturn += ' <td style="height:26px;vertical-align:middle;">&nbsp;</td>';
+							sReturn += ' <td style="vertical-align:middle;text-align:right;">&nbsp;Group Average:&nbsp;</td>';
+							sReturn += ' <td style="vertical-align:middle;text-align:right;" title="' + iRunNum + '/' + iRunDenom + '"><span style="text-align:right;border-top:1px solid #808080;border-bottom:1px solid #808080;padding:2px;">&nbsp;' + (parseFloat(iRunNum) * parseFloat(indicatorTypeFactor) / parseFloat(iRunDenom)).toFixed(1).replace('.0','') + '&nbsp;</span></td>';
+							sReturn += ' <td style="vertical-align:middle;"><span style="border-top:1px solid #808080;border-bottom:1px solid #808080;padding:2px;">&nbsp;' + dxTypeName + '&nbsp;</span></td>';
+							sReturn += ' <td style="vertical-align:middle;text-align:right;">&nbsp;</td>';
+							sReturn += ' <td style="vertical-align:middle;text-align:center;">&nbsp;</td>';
+							sReturn += ' <td style="vertical-align:middle;text-align:left">&nbsp;</td>';
+							//sReturn += ' <td style="vertical-align:middle;text-align:right;">&nbsp;' + parseFloat(((parseFloat(iRunNum) * parseFloat(indicatorTypeFactor) / parseFloat(iRunDenom)) - parseFloat(g_RegAvg)) / parseFloat(g_iStDev)).toFixed(2).replace('.00','') + '&nbsp;</td>';
+							sReturn += ' <td style="vertical-align:middle;text-align:right;">&nbsp;</td>';
+							sReturn += ' <td style="vertical-align:middle;font-size:9pt;text-align:right;">&nbsp;</td>';
+							sReturn += ' <td style="vertical-align:middle;text-align:left;">&nbsp;</td>';
+							sReturn += ' <td style="vertical-align:middle;font-size:9pt;text-align:right;">&nbsp;' + (parseFloat(iRunDenom) / parseFloat(iGTden) * 100).toFixed(2).replace('.00','') + '&nbsp;</td>';
+							sReturn += ' <td style="vertical-align:middle;text-align:left;">&nbsp;</td>';
+							sReturn += '</tr>';
+
+						}
+
+						sReturn += '<tr style="background-Color:#ffffff;"><td colspan=12 style="height:30px">&nbsp;</td></tr>';
+
+					}
+
+					if (iZeroDenominators == 1){
+
+						var iLastValue = -123456789;
+
+						sTitle = 'NONE REPORTERS: no data for [' + denominatorDescription + ']';
+
+						sReturn += '<tr style="background-Color:#B5BBC6;">';
+						sReturn += ' <td colspan=12 class="rounded" style="background-Color:#A8A9AD;color:#ffffff;border:1px solid #ff;font-size:10pt;font-weight:400;padding:6px;vertical-align:middle;">&nbsp;' + sTitle + '&nbsp;</td></tr>';
+						sReturn += '<tr style="vertical-align:middle;height:30px;">';
+						sReturn += ' <td style="width:25px;">&nbsp;</td>';
+						sReturn += ' <td style="height:40px;vertical-align:middle;">&nbsp;<b>' + OUlevelArr[OUoutputLevel-1] + '</b></td>';
+						sReturn += ' <td style="height:40px;vertical-align:middle;text-align:center;" nowrap colspan=5><b>' + peFilter + ' : ' + g_dxName + '</b></td>';
+						sReturn += ' <td style="width:70px;vertical-align:middle;text-align:right;" nowrap><b>&nbsp;&nbsp;&nbsp;Z-Score&nbsp;</b></td>';
+						sReturn += ' <td style="width:100px;height:40px;vertical-align:middle;text-align:right;" title="Influence of indicator score on overall [' + g_RegAvg + ']">&nbsp;<b>NUM %</b>&nbsp;</td>';
+						sReturn += ' <td style="width:10px;font-size:14pt;font-weight:700;">&nbsp;&darr;&nbsp;</td>';
+						sReturn += ' <td style="width:100px;text-align:right;vertical-align:middle;"><b>&nbsp;DEN %&nbsp;</b></td>';
+						sReturn += ' <td style="width:230px;text-align:left;vertical-align:middle;">&nbsp;</td>';
+						sReturn += '</tr>';
+
+						iPosition = 0;
+						iRunNum = 0;
+						iRunDenom = 0;
+
+						for(i = 0; i < myNewArr.length; i++) {
+
+							if ((myNewArr[i].denominator) == 0)
+							{
+								iPosition += 1;
+								sReturn += '<tr style="background-Color:#E7E7E8;">';
+								sReturn += ' <td title="" style="height:26px;vertical-align:middle;border-bottom:4px solid #ffffff;background-Color:#3A5C8A;Opacity:0.8;color:#F5F5F5"><div style="cursor:default;opacity:1;font-size:8pt;font-weight:700;text-align:center;">' + ((parseFloat(iLastValue) == parseFloat(myNewArr[i].denominator)) ? '' : iPosition) + '</div></td>';
+								sReturn += ' <td style="vertical-align:middle;border-bottom:4px solid #ffffff;overflow:hidden;" nowrap><span style="">&nbsp;' + ReturnLookupName(objNames,myNewArr[i].ou) + '&nbsp;</span></td>';
+								sReturn += ' <td style="vertical-align:middle;border-bottom:4px solid #ffffff;text-align:right">&nbsp;</td>';
+								sReturn += ' <td style="vertical-align:middle;border-bottom:4px solid #ffffff;padding:2px;">&nbsp;</td>';
+								sReturn += ' <td style="vertical-align:middle;border-bottom:4px solid #ffffff;text-align:right;">&nbsp;</td>';
+								sReturn += ' <td style="vertical-align:middle;border-bottom:4px solid #ffffff;text-align:center;">&nbsp;</td>';
+								sReturn += ' <td style="vertical-align:middle;border-bottom:4px solid #ffffff;text-align:left">&nbsp;</td>';
+								sReturn += ' <td style="vertical-align:middle;border-bottom:4px solid #ffffff;text-align:right;">&nbsp;</td>';
+								sReturn += ' <td style="vertical-align:middle;border-bottom:4px solid #ffffff;font-size:9pt;text-align:right;">&nbsp;</td>';
+								sReturn += ' <td style="vertical-align:middle;border-bottom:4px solid #ffffff;text-align:left;">&nbsp;</td>';
+								sReturn += ' <td style="vertical-align:middle;border-bottom:4px solid #ffffff;font-size:9pt;text-align:right;">&nbsp;</td>';
+								sReturn += ' <td style="vertical-align:middle;border-bottom:4px solid #ffffff;text-align:left;">&nbsp;</td>';
+								sReturn += '</tr>';
+							}
+						}
+
+						sReturn += '<tr style="background-Color:#ffffff;"><td colspan=12 style="height:30px">&nbsp;</td></tr>';
+
+					}
+
+					sReturn += '</tbody></table>';
+
+					//console.log('FinNum: ' + FinNum + '; FinDen: ' + FinDen + '; calc: ' + (parseFloat(FinNum) / parseFloat(FinDen) * 100).toFixed(2)); 
+					if (iCalcNewScore != 0){
+						document.getElementById('score_recalc').innerHTML = '(' + (parseFloat(FinNum) / parseFloat(FinDen) * 100).toFixed(2) + ')';
+						$('score_recalc').html( (parseFloat(FinNum) / parseFloat(FinDen) * 100).toFixed(2) );
+					}
+
+					$(sDestination).html(sReturn);
+
+				}
+
+				function LookupBGColor(d) {
+
+					for (var i = 0; i < LegendCols.length; i++) {
+						// test > current value && less than next value
+						if ((parseFloat(d) >= parseFloat(LegendRangeTestValues[i])) && (parseFloat(d) < parseFloat(LegendRangeTestValues[i+1]))){
+							return LegendCols[i];
+							break;
+						}
+					}
+				}
+
+				function getColor(d) {
+				
+					/*if (LegendCols == undefined){
+						return '#6B85E3';
+					} else */
+					{
+
+						for (var i = 0; i < LegendCols.length; i++) {
+							// test > current value && less than next value
+							if ((parseFloat(d) >= parseFloat(LegendRangeTestValues[i])) && (parseFloat(d) < parseFloat(LegendRangeTestValues[i+1]))){
+								return LegendCols[i];
+								break;
+							}
+						}
+
+					}
+				}
+			}
+
+		}
+	
+	});
+
+}); //document ready function
+
+	function GetOUlevelNames(OUlevelJ){
+
+		var i;
+		var sReturn = '';
+		var OUarr = [];
+
+		for(i = 1; i < OUlevelJ.organisationUnitLevels.length; i++) {
+			OUarr.push(GetOUlevelName(objLevels,i));
+		}
+
+		return OUarr;
+	}
+
+	function GetOUlevelName(OUlevelJ,iOU){
+
+		var i;
+		var sReturn = '';
+
+		for(i = 0; i < OUlevelJ.organisationUnitLevels.length; i++) {
+			if (OUlevelJ.organisationUnitLevels[i].level == iOU){
+				sReturn = OUlevelJ.organisationUnitLevels[i].name;
+			}
+		}
+
+		if (sReturn == ''){
+			return iOU;
+		}
+		else{
+			return sReturn;
+		}
+
+	}
+
+	function ReturnLookupName(theData,Val){
+		sReturn = theData[Val].name;
+		return  sReturn;
+	}
+
+	function ReturnLookupDx(theData,dx){
+
+		var i;
+		var sReturn = '';
+
+		for(i = 0; i < theData.rows.length; i++) {
+		
+			if (theData.rows[i][0] == dx)
+			{
+				sReturn = theData.rows[i][1];
+			}
+
+		}
+
+		return sReturn;
+	}
+
+	function ReturnLookupValue(theData,dx,ou){
+
+		var i;
+		var dblValue = 0;
+
+		for(i = 0; i < theData.rows.length; i++) {		
+			if (theData.rows[i] != undefined){
+				if (theData.rows[i][0] == dx)
+				{
+					if (theData.rows[i][1] == ou)
+					{
+						dblValue = theData.rows[i][2];
+					}
+				}
+			}
+		}
+
+		return dblValue;
+	}
+
+	function ReturnColValue(theData,dx,ou,iCol){
+
+		var i;
+		var dblValue = 0;
+
+		for(i = 0; i < theData.rows.length; i++) {		
+			if (theData.rows[i] != undefined){
+				if (theData.rows[i][0] == dx)
+				{
+					if (theData.rows[i][1] == ou)
+					{
+						dblValue = theData.rows[i][iCol];
+					}
+				}
+			}
+		}
+
+		return dblValue;
+	}
+
+	function ReturnLookupValueFormula(theData,DxFormula,DxString,ou,varDefault){
+
+		var i;
+		var sReturn = varDefault;
+		var ArrDx = DxString.split(';');
+		
+		// ONLY RETURNING 1 FRIKKEN VALUE BECAUSE THE ASSUMPTION IS THE FORMULA ONLY CONTAINS 1 UID VALUE!!! DOHH!
+
+		for (var p = 0; p < ArrDx.length; p++) {
+
+			for(i = 0; i < theData.rows.length; i++) {		
+				if (theData.rows[i] != undefined){
+					if (theData.rows[i][0] == ArrDx[p])
+					{
+						if (theData.rows[i][1] == ou)
+						{
+							sReturn += parseFloat(theData.rows[i][2]);
+						}
+					}
+				}
+			}
+		}
+
+		return sReturn;
+	}
+
+	function getParameterByName(name) {0
+		name = name.replace(/[\[]/, "\\[").replace(/[\]]/, "\\]");
+		var regex = new RegExp("[\\?&]" + name + "=([^&#]*)"),
+			results = regex.exec(location.search);
+		return results === null ? "" : decodeURIComponent(results[1].replace(/\+/g, " "));
+	}
+
+	function decimalPlaces(num) {
+	  var match = (''+num).match(/(?:\.(\d+))?(?:[eE]([+-]?\d+))?$/);
+	  if (!match) { return 0; }
+	  return Math.max(
+		   0,
+		   // Number of digits right of decimal point.
+		   (match[1] ? match[1].length : 0)
+		   // Adjust for scientific notation.
+		   - (match[2] ? +match[2] : 0));
+	}
+
+	</script>
+
+</head>
+
+<body>
+
+<table style="width:1130px;">
+	<tr>
+		<td id='PageTitle' name='PageTitle' colspan=2 class="rounded" style="background-Color:#ffffff;color:#000000;padding:10px;vertical-align:middle;border:1px solid #e5e5e5;"></td>
+	</tr>
+	<!-- <tr>
+		<td id='PageSubTitle' name='PageSubTitle' colspan=2 class="rounded" style="background-Color:#ffffff;color:#000000;"></td>
+	</tr>-->
+	<tr>
+		<td style="overflow:hidden;">
+			<div id="summary1" style=""></div>
+		</td>
+		<td rowspan=2>
+			<div id="map1"></div>
+		</td>
+	</tr>
+	<tr>
+		<td>
+			<div id="summary2" style="overflow:hidden;"></div>
+		</td>
+	</tr>
+
+	<tr>
+		<td colspan=2 class="rounded" style="background-Color:#ffffff;color:#101010;padding:10px;font-size:9pt;opacity:0.8;border:1px solid #e5e5e5;">
+			<b style="color:#000000;">DEFINITIONS:</b><br>Regions highlighted as <b>significant</b> fall beyond 1 standard deviation of the regional average (i.e. sufficiently above or below the regional average that it may necessitate special consideration or attention).<br><br>
+			<div style="font-size:9pt;">
+				<b style="color:#101010;">CONCEPTS:</b><br>
+				<b style="color:#101010;">Performance</b> is measured using  <b style="color:#101010;">Z-score</b> assessment (<b style="color:#101010;">standard deviation</b> distance from baseline: regional <b style="color:#101010;">mean</b>). <br>
+			</div>
+		</td>
+	</tr>
+
+	<tr>
+		<td colspan=2 class="rounded" style="background-Color:#ffffff;color:#101010;padding:4px;font-size:9pt;opacity:0.8;height:260px;overflow:hidden;border:1px solid #e5e5e5;">
+			<div id="ValueRangeProfile" style="overflow:auto;text-align:right;height:300px;overflow:hidden;"></div>
+			<b style="color:#000000;">Value Range</b>
+		</td>
+	</tr>
+	<tr>
+		<td colspan=2 class="rounded" style="background-Color:#ffffff;color:#101010;padding:4px;font-size:9pt;opacity:0.8;height:260px;overflow:hidden;border:1px solid #e5e5e5;">
+			<div id="HistogramProfile" style="overflow:auto;text-align:right;height:300px;overflow:hidden;"></div>
+			<b style="color:#000000;">Data Distribution: Histogram</b>
+		</td>
+	</tr>
+	<tr>
+		<td colspan=2 style="height:0px;"><DIV style="page-break-after:always"></DIV></td>
+	</tr> 
+	<tr>
+		<td colspan=2 style="vertical-align:top;">
+			<div id="summary3" style=""></div>
+		</td>
+	</tr>
+	<tr>
+		<td colspan=2 class="noprint">
+			<div id='downloadOptions' name='downloadOptions' style=""></div>
+		</td>
+	</tr>
+</table>
+
+</body>
+</html>
