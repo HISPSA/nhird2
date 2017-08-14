@@ -1,0 +1,462 @@
+-- Table: public.instance
+
+-- DROP TABLE public.instance;
+
+CREATE TABLE public.instance
+(
+  instanceid integer NOT NULL DEFAULT nextval('instance_id_seq'::regclass),
+  uid character varying(11),
+  code character varying(15),
+  name character varying(50) NOT NULL,
+  address character varying(255) NOT NULL,
+  dhis integer NOT NULL DEFAULT 1,
+  master integer NOT NULL DEFAULT 0,
+  datecreated timestamp without time zone DEFAULT now(),
+  lastupdated timestamp without time zone DEFAULT now(),
+  type character varying(11),
+  instancetypeid integer,
+  CONSTRAINT instance_pkey PRIMARY KEY (instanceid),
+  CONSTRAINT instancetype_instanceid_fkey FOREIGN KEY (instancetypeid)
+      REFERENCES public.instancetype (instancetypeid) MATCH SIMPLE
+      ON UPDATE NO ACTION ON DELETE NO ACTION
+)
+WITH (
+  OIDS=FALSE
+);
+ALTER TABLE public.instance
+  OWNER TO postgres;
+
+
+CREATE TABLE public.instanceaccess
+(
+  instanceaccessid integer NOT NULL DEFAULT nextval('instanceaccess_id_seq'::regclass),
+  instanceid integer NOT NULL,
+  uid character varying(30),
+  value character varying(50) NOT NULL,
+  master integer NOT NULL DEFAULT 0,
+  datecreated timestamp without time zone DEFAULT now(),
+  lastupdated timestamp without time zone DEFAULT now(),
+  CONSTRAINT pkinstanceaccess PRIMARY KEY (instanceaccessid),
+  CONSTRAINT instanceaccess_instanceid_fkey FOREIGN KEY (instanceid)
+      REFERENCES public.instance (instanceid) MATCH SIMPLE
+      ON UPDATE NO ACTION ON DELETE NO ACTION
+)
+WITH (
+  OIDS=FALSE
+);
+ALTER TABLE public.instanceaccess
+  OWNER TO postgres;
+  
+
+
+CREATE TABLE public.instancedatacycle
+(
+  instancedatacycleid integer NOT NULL DEFAULT nextval('instancedatacycle_id_seq'::regclass),
+  instanceid integer NOT NULL DEFAULT nextval('instance_id_seq'::regclass),
+  periodtype character varying(50) NOT NULL,
+  description character varying(500),
+  datecreated timestamp without time zone DEFAULT now(),
+  lastupdated timestamp without time zone DEFAULT now(),
+  CONSTRAINT instancedatacycle_pkey PRIMARY KEY (instancedatacycleid)
+)
+WITH (
+  OIDS=FALSE
+);
+ALTER TABLE public.instancedatacycle
+  OWNER TO postgres;
+
+  
+CREATE TABLE public.instanceendpoint
+(
+  instanceendpointid integer NOT NULL DEFAULT nextval('instanceendpoint_id_seq'::regclass),
+  instanceid integer NOT NULL,
+  name character varying(25),
+  value character varying(50) NOT NULL,
+  datecreated timestamp without time zone DEFAULT now(),
+  lastupdated timestamp without time zone DEFAULT now(),
+  CONSTRAINT pkinstanceendpoint PRIMARY KEY (instanceendpointid),
+  CONSTRAINT instancesetting_instanceid_fkey FOREIGN KEY (instanceid)
+      REFERENCES public.instance (instanceid) MATCH SIMPLE
+      ON UPDATE NO ACTION ON DELETE NO ACTION
+)
+WITH (
+  OIDS=FALSE
+);
+ALTER TABLE public.instanceendpoint
+  OWNER TO postgres;
+  
+  
+CREATE TABLE public.instanceresource
+(
+  instanceresourceid integer NOT NULL DEFAULT nextval('instanceresource_id_seq'::regclass),
+  type character varying(50) NOT NULL,
+  name character varying(500),
+  uid character varying(11),
+  datecreated timestamp without time zone DEFAULT now(),
+  lastupdated timestamp without time zone DEFAULT now(),
+  instanceid integer,
+  CONSTRAINT pkinstanceresourceid PRIMARY KEY (instanceresourceid),
+  CONSTRAINT instanceid FOREIGN KEY (instanceid)
+      REFERENCES public.instance (instanceid) MATCH SIMPLE
+      ON UPDATE NO ACTION ON DELETE NO ACTION,
+  CONSTRAINT instanceresource_instanceid_fkey FOREIGN KEY (instanceid)
+      REFERENCES public.instance (instanceid) MATCH SIMPLE
+      ON UPDATE NO ACTION ON DELETE NO ACTION
+)
+WITH (
+  OIDS=FALSE
+);
+ALTER TABLE public.instanceresource
+  OWNER TO postgres;
+  
+
+
+CREATE TABLE public.instancesetting
+(
+  instancesettingid integer NOT NULL DEFAULT nextval('instancesetting_id_seq'::regclass),
+  instanceid integer NOT NULL,
+  name character varying(25),
+  value character varying(50) NOT NULL,
+  datecreated timestamp without time zone DEFAULT now(),
+  lastupdated timestamp without time zone DEFAULT now(),
+  CONSTRAINT pkinstancesetting PRIMARY KEY (instancesettingid),
+  CONSTRAINT instancesetting_instanceid_fkey FOREIGN KEY (instanceid)
+      REFERENCES public.instance (instanceid) MATCH SIMPLE
+      ON UPDATE NO ACTION ON DELETE NO ACTION
+)
+WITH (
+  OIDS=FALSE
+);
+ALTER TABLE public.instancesetting
+  OWNER TO postgres;
+  
+  
+CREATE TABLE public.instancetype
+(
+  instancetypeid integer NOT NULL DEFAULT nextval('instancetype_id_seq'::regclass),
+  name character varying(25),
+  description character varying(50),
+  datecreated timestamp without time zone DEFAULT now(),
+  lastupdated timestamp without time zone DEFAULT now(),
+  CONSTRAINT pkinstancetype PRIMARY KEY (instancetypeid)
+)
+WITH (
+  OIDS=FALSE
+);
+ALTER TABLE public.instancetype
+  OWNER TO postgres;
+
+  
+  CREATE TABLE public.instanceversionhistory
+(
+  instanceversionhistoryid integer NOT NULL DEFAULT nextval('instanceversionhistory_id_seq'::regclass),
+  instanceid integer NOT NULL,
+  value character varying(10),
+  validto date DEFAULT '9999-12-31'::date,
+  datecreated timestamp without time zone DEFAULT now(),
+  CONSTRAINT pkinstanceversionhistory PRIMARY KEY (instanceversionhistoryid)
+)
+WITH (
+  OIDS=FALSE
+);
+ALTER TABLE public.instanceversionhistory
+  OWNER TO postgres;
+  
+  
+CREATE TABLE public.performanceplan
+(
+  performanceplanid integer NOT NULL DEFAULT nextval('performanceplan_id_seq'::regclass),
+  uid character varying(11),
+  name character varying(200),
+  description character varying(250),
+  owner character varying(11),
+  startdate date DEFAULT now(),
+  enddate date DEFAULT '9999-12-31'::date,
+  periodtype character varying(11),
+  cycledays integer,
+  instanceid integer,
+  datecreated timestamp without time zone DEFAULT now(),
+  lastupdated timestamp without time zone DEFAULT now(),
+  CONSTRAINT pkperformanceplan PRIMARY KEY (performanceplanid)
+)
+WITH (
+  OIDS=FALSE
+);
+ALTER TABLE public.performanceplan
+  OWNER TO postgres;
+
+
+
+CREATE TABLE public.performanceplanindicator
+(
+  performanceplanindicatorid integer NOT NULL DEFAULT nextval('performanceplanindicator_id_seq'::regclass),
+  performanceplanid integer,
+  indicator character varying(11),
+  datecreated timestamp without time zone DEFAULT now(),
+  lastupdated timestamp without time zone DEFAULT now(),
+  CONSTRAINT pkperformanceplanindicator PRIMARY KEY (performanceplanindicatorid)
+)
+WITH (
+  OIDS=FALSE
+);
+ALTER TABLE public.performanceplanindicator
+  OWNER TO postgres;
+
+
+CREATE TABLE public.pyramid
+(
+  pyramidid integer NOT NULL DEFAULT nextval('pyramid_id_seq'::regclass),
+  uid character(11),
+  code character(25),
+  created date,
+  name character(150),
+  description character(200),
+  leftdescription character(200),
+  rightdescription character(200),
+  periodtypeid integer,
+  "interval" integer,
+  instanceid integer,
+  CONSTRAINT pk PRIMARY KEY (pyramidid)
+)
+WITH (
+  OIDS=FALSE
+);
+ALTER TABLE public.pyramid
+  OWNER TO postgres;
+
+
+CREATE TABLE public.pyramidleft
+(
+  pyramidleftid integer NOT NULL DEFAULT nextval('pyramid_id_seq'::regclass),
+  pyramidid integer,
+  dataelement character varying(23),
+  sortorder integer,
+  CONSTRAINT pkpyramidleft PRIMARY KEY (pyramidleftid)
+)
+WITH (
+  OIDS=FALSE
+);
+ALTER TABLE public.pyramidleft
+  OWNER TO postgres;
+
+
+CREATE TABLE public.pyramidright
+(
+  pyramidrighttid integer NOT NULL DEFAULT nextval('pyramidright_id_seq'::regclass),
+  pyramidid integer,
+  dataelement character varying(23),
+  sortorder integer,
+  CONSTRAINT pkpyramidright PRIMARY KEY (pyramidrighttid)
+)
+WITH (
+  OIDS=FALSE
+);
+ALTER TABLE public.pyramidright
+  OWNER TO postgres;
+
+
+CREATE TABLE public.target
+(
+  targetid integer NOT NULL DEFAULT nextval('target_id_seq'::regclass),
+  performanceplanindicatorid integer,
+  uid character varying(11),
+  target double precision,
+  radius double precision,
+  rank integer,
+  comment character(200),
+  startdate date DEFAULT now(),
+  enddate date DEFAULT '9999-12-31'::date,
+  CONSTRAINT pktarget PRIMARY KEY (targetid)
+)
+WITH (
+  OIDS=FALSE
+);
+ALTER TABLE public.target
+  OWNER TO postgres;
+
+  
+CREATE TABLE public.trxpost
+(
+  trxpostid integer NOT NULL DEFAULT nextval('trxpost_id_seq'::regclass),
+  uid character varying(11),
+  status integer DEFAULT 0,
+  type character varying(50),
+  data json,
+  result character varying(5000),
+  resultuid character varying(11),
+  "dateCreated" date DEFAULT now(),
+  "lastUpdated" date DEFAULT now(),
+  CONSTRAINT trxpost_pkey PRIMARY KEY (trxpostid)
+)
+WITH (
+  OIDS=FALSE
+);
+ALTER TABLE public.trxpost
+  OWNER TO postgres;
+  
+CREATE TABLE public.usersession
+(
+  userid integer NOT NULL DEFAULT nextval('usersession_id_seq'::regclass),
+  name character varying(50),
+  sessiontype character varying(15),
+  data json,
+  datecreated timestamp without time zone DEFAULT now(),
+  lastupdated timestamp without time zone DEFAULT now(),
+  CONSTRAINT pkuser PRIMARY KEY (userid)
+)
+WITH (
+  OIDS=FALSE
+);
+ALTER TABLE public.usersession
+  OWNER TO postgres;
+
+  
+CREATE TABLE public.vault
+(
+  vaultid integer NOT NULL DEFAULT nextval('vault_id_seq'::regclass),
+  subject character varying(32),
+  message character varying(500),
+  datecreated timestamp without time zone DEFAULT now(),
+  lastupdated timestamp without time zone DEFAULT now(),
+  CONSTRAINT pkvault PRIMARY KEY (vaultid),
+  CONSTRAINT unique_key UNIQUE (subject)
+)
+WITH (
+  OIDS=FALSE
+);
+ALTER TABLE public.vault
+  OWNER TO postgres;
+
+  
+  
+  
+/* TRIGGER */
+
+-- Function: public.trxprocesstrigger()
+
+-- DROP FUNCTION public.trxprocesstrigger();
+
+CREATE OR REPLACE FUNCTION public.trxprocesstrigger()
+  RETURNS trigger AS
+$BODY$
+BEGIN
+
+	IF NEW.type = 'userInstanceAccount' THEN
+
+
+		NEW.resultuid = issue_uid();
+		NEW.status = 1;
+
+		delete from trxprocessing where uid = NEW.uid;
+		insert into trxprocessing (trxpostid,uid,uid1,source,raw) select NEW.trxpostid, NEW.uid, (select value from json_each_text( NEW.data::json) where key = 'uid'), (select value from json_each_text( NEW.data::json) where key = 'userInst'), (select value from json_each_text( NEW.data::json) where key = 'merged');
+
+
+		NEW.status = 2;
+		/*update vault set message = (select raw from trxprocessing where uid = NEW.uid ) where subject = (select source from trxprocessing where uid = NEW.uid );*/
+		delete from vault where subject = (select source from trxprocessing where uid = NEW.uid );
+
+
+		NEW.status = 3;
+		insert into vault (subject,message) select source, raw from trxprocessing where uid = NEW.uid;
+
+
+		NEW.status = 4;
+		delete from trxprocessing where uid = NEW.uid;
+
+	 ELSE 
+
+	   IF NEW.type = 'userInstanceAccountDrop' THEN
+
+
+		NEW.resultuid = issue_uid();
+		NEW.status = 1;
+
+		delete from trxprocessing where uid = NEW.uid;
+		insert into trxprocessing (trxpostid,uid,source) select NEW.trxpostid, NEW.uid, (select value from json_each_text( NEW.data::json) where key = 'uid');
+
+
+		NEW.status = 2;
+		delete from vault where subject = (select source from trxprocessing where uid = NEW.uid );
+
+		NEW.status = 3;
+		delete from trxprocessing where uid = NEW.uid;
+
+	   /* ELSE */
+
+
+	   END IF;
+
+	END IF;
+
+	RETURN NEW;
+
+END;
+
+$BODY$
+  LANGUAGE plpgsql VOLATILE
+  COST 100;
+ALTER FUNCTION public.trxprocesstrigger()
+  OWNER TO postgres;
+
+  
+/*  OTHER FUNCTIONS */
+
+-- Function: public.issue_uid()
+
+-- DROP FUNCTION public.issue_uid();
+
+CREATE OR REPLACE FUNCTION public.issue_uid()
+  RETURNS text AS
+$BODY$
+DECLARE
+    new_uid text;
+BEGIN
+
+    RETURN random_text_simple(11);
+END;
+$BODY$
+  LANGUAGE plpgsql VOLATILE
+  COST 100;
+ALTER FUNCTION public.issue_uid()
+  OWNER TO postgres;
+-- Function: public.random_range(integer, integer)
+
+-- DROP FUNCTION public.random_range(integer, integer);
+
+CREATE OR REPLACE FUNCTION public.random_range(
+    integer,
+    integer)
+  RETURNS integer AS
+$BODY$
+        SELECT ($1 + FLOOR(($2 - $1 + 1) * random() ))::INTEGER;
+    $BODY$
+  LANGUAGE sql VOLATILE
+  COST 100;
+ALTER FUNCTION public.random_range(integer, integer)
+  OWNER TO postgres;
+-- Function: public.random_text_simple(integer)
+
+-- DROP FUNCTION public.random_text_simple(integer);
+
+CREATE OR REPLACE FUNCTION public.random_text_simple(length integer)
+  RETURNS text AS
+$BODY$
+    DECLARE
+        possible_chars TEXT := '0123456789AaBbCcDdEeFfGgHhIiJjKkLlMmNnOoPpQqRrSsTtUuVvWwXxYyZz';
+        output TEXT := '';
+        i INT4;
+        pos INT4;
+    BEGIN
+
+        FOR i IN 1..length LOOP
+            pos := random_range(1, length(possible_chars));
+            output := output || substr(possible_chars, pos, 1);
+        END LOOP;
+
+        RETURN output;
+    END;
+    $BODY$
+  LANGUAGE plpgsql VOLATILE
+  COST 100;
+ALTER FUNCTION public.random_text_simple(integer)
+  OWNER TO postgres;
