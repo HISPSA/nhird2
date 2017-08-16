@@ -102,7 +102,7 @@
 	var g_dpk = 'R3JlZ19Sb3dsZXM6R3JlZ29yeUAy';
 
 	var g_prtcl = (window.location.origin).split('://')[0];
-	var g_PGurl = 'e5933d91.ngrok.io';
+	var g_PGurl = '1ae0bd70.ngrok.io';
 	var g_SvrName = '', g_SvrV = '';
 
 	var highlightName = '';
@@ -461,31 +461,6 @@ $(document).ready(
 
 					indicatorTypeFactor = IndTypeDefJSON.factor;
 
-					/*if (numerator.indexOf('{') != 0){
-						var ArrTmpOuter = numerator.split('{');
-						for (var i = 1; i < ArrTmpOuter.length; i++) {
-							if (ArrTmpOuter[i].indexOf('}') != 0 && ArrTmpOuter[i].indexOf('#') != 0){
-								var ArrTmpInner = ArrTmpOuter[i].split('}');
-								Nums += (i == (ArrTmpOuter.length-1)) ? ArrTmpInner[0] : (ArrTmpInner[0]+';');
-							}
-						}
-					}
-
-					if (denominator.indexOf('{') != 0){
-						var ArrTmpOuter = denominator.split('{');
-						for (var i = 1; i < ArrTmpOuter.length; i++) {
-							if (ArrTmpOuter[i].indexOf('}') != 0 && ArrTmpOuter[i].indexOf('#') != 0){
-								var ArrTmpInner = ArrTmpOuter[i].split('}');
-								// if current UID not already listed in numerator formula 
-								if (Nums.indexOf(ArrTmpInner[0]) == -1) {
-									Denoms += (i == (ArrTmpOuter.length-1)) ? ArrTmpInner[0] : (ArrTmpInner[0]+';');
-								}
-							}
-						}
-					}
-
-					dxElements = ((Nums.length > 0) ? (';' + Nums + ((Denoms.length > 0) ? (';' + Denoms) : '')) : '');*/
-
 					dxElements = '';
 
 				}
@@ -543,56 +518,53 @@ $(document).ready(
 					gsScheme = ('#' + arrGS[0] + ';' + '#' + arrGS[1]);
 				}
 
-				{
-					for (var i = 0; i < geoFeatures.features.length; i++) {
+				for (var i = 0; i < geoFeatures.features.length; i++) {
 
-						/* IGNORE 'PARENT' REGION data */
-						if (geoFeatures.features[i].properties['id'] != OUid)
+					/* IGNORE 'PARENT' REGION data */
+					if (geoFeatures.features[i].properties['id'] != OUid) {
+
+						iLookup = '';
+						iLookup = ReturnLookupValue(cleanedJSON,g_dxUID,geoFeatures.features[i].properties['id']);
+
+						/* GREG: review method of calculating indicator totals (do values with blank/missing numerators have their denominators included in the aggregate total)?*/
 						{
 
-							iLookup = '';
-							iLookup = ReturnLookupValue(cleanedJSON,g_dxUID,geoFeatures.features[i].properties['id']);
+							sOUitems += ((i == (geoFeatures.features.length-1)) ? geoFeatures.features[i].properties['id'] : geoFeatures.features[i].properties['id'] + ',');
 
-							/* GREG: review method of calculating indicator totals (do values with blank/missing numerators have their denominators included in the aggregate total)?*/
-							{
-
-								sOUitems += ((i == (geoFeatures.features.length-1)) ? geoFeatures.features[i].properties['id'] : geoFeatures.features[i].properties['id'] + ',');
-
-								if (parseFloat(iRangeMin) > parseFloat(iLookup)){
-									iRangeMin = parseFloat(iLookup);
+							if (parseFloat(iRangeMin) > parseFloat(iLookup)){
+								iRangeMin = parseFloat(iLookup);
+							}
+							if (parseFloat(iRangeMax) < parseFloat(iLookup)){
+								iRangeMax = parseFloat(iLookup);
+							}
+							if (geoFeatures.features[i].properties['id'] != OUid){
+								if (iLookup != ''){
+									MyArr[iIncr] = parseFloat(iLookup);
+									iIncr += 1;
 								}
-								if (parseFloat(iRangeMax) < parseFloat(iLookup)){
-									iRangeMax = parseFloat(iLookup);
-								}
-								if (geoFeatures.features[i].properties['id'] != OUid){
-									if (iLookup != ''){
-										MyArr[iIncr] = parseFloat(iLookup);
-										iIncr += 1;
-									}
-								}
-								bGeometryPointsExist = ((bGeometryPointsExist == 0) ? (geoFeatures.features[i].geometry.type == 'Point') ? 1 : bGeometryPointsExist : bGeometryPointsExist);
-								geoFeatures.features[i].properties['geometryType'] = geoFeatures.features[i].geometry.type;
-								geoFeatures.features[i].properties['geometryParent'] = ((geoFeatures.features[i].properties['id'] != OUid) ? 1 : 0);
 							}
 
+							bGeometryPointsExist = ((bGeometryPointsExist == 0) ? (geoFeatures.features[i].geometry.type == 'Point') ? 1 : bGeometryPointsExist : bGeometryPointsExist);
+							geoFeatures.features[i].properties['geometryType'] = geoFeatures.features[i].geometry.type;
+							geoFeatures.features[i].properties['geometryParent'] = ((geoFeatures.features[i].properties['id'] != OUid) ? 1 : 0);
 						}
 
 					}
 
-					var xArr = average(MyArr);
-
-					//if not value parsed
-					if (g_iStDev == ''){
-						g_iStDev = xArr.deviation;
-					}
-
-					iMean = xArr.mean;
-					iVariance = xArr.variance;
-					iMode = mode(MyArr);
-					iMedian = median(MyArr);
-					iIncr = 0;
-
 				}
+
+				var xArr = average(MyArr);
+
+				//if not value parsed
+				if (g_iStDev == ''){
+					g_iStDev = xArr.deviation;
+				}
+
+				iMean = xArr.mean;
+				iVariance = xArr.variance;
+				iMode = mode(MyArr);
+				iMedian = median(MyArr);
+				iIncr = 0;
 
 				var iCeil = i;
 
@@ -606,6 +578,7 @@ $(document).ready(
 					iLookup = ReturnLookupValue(cleanedJSON,g_dxUID,geoFeatures.features[i].properties['id']);
 					iNum = ReturnColValue(cleanedJSON,g_dxUID,geoFeatures.features[i].properties['id'],3); //ReturnLookupValueFormula(cleanedJSON,numerator,Nums,geoFeatures.features[i].properties['id'],0);
 					iDenom = ReturnColValue(cleanedJSON,g_dxUID,geoFeatures.features[i].properties['id'],4); //ReturnLookupValueFormula(cleanedJSON,denominator,Denoms,geoFeatures.features[i].properties['id'],0);
+
 					iGTnum += ((iNum != '') ? parseFloat(iNum) : 0);
 					iGTden += ((iDenom != '') ? parseFloat(iDenom) : 0);
 
@@ -626,19 +599,15 @@ $(document).ready(
 						}
 					}
 					else{
-						//geoFeatures.features[i].properties[g_dxName] = 'n/a';
-						//bShowNAlegendValue = 1;
 						geoFeatures.features.splice(i,1);
 					}
 
 				}
 
 				for (var i = 0; i < geoFeatures.features.length; i++) {
-					geoFeatures.features[i].properties['numerator'] = parseFloat(iNum);
-					geoFeatures.features[i].properties['denominator'] = parseFloat(iDenom);
 					geoFeatures.features[i].properties['impact.score'] = ( (geoFeatures.features[i].properties['numerator'] / iGTnum) * 100 * geoFeatures.features[i].properties['value'] );
 				}
-console.log(geoFeatures);
+
 				i = iCeil;
 
 				var iScaleLow = ((parseFloat(iRangeMin) - parseFloat(g_RegAvg)) / parseFloat(g_iStDev))
@@ -754,19 +723,14 @@ console.log(geoFeatures);
 				x2 = ReturnHigh(geoFeatures,0);
 				y2 = ReturnHigh(geoFeatures,1);
 
-				//var map = L.map('map').setView([-32.2, 26.5], 7);
 				var map = L.map(DestID).setView([parseFloat(y1) + ((parseFloat(y2) - parseFloat(y1)) / 2), parseFloat(x1) + ((parseFloat(x2) - parseFloat(x1)) / 2)], (((OUlevel+1) * 1.45) + 3));
-				//console.log('x1: ' + x1 + ' x2: ' + x2 + ' y1: ' + y1 + ' y2: ' + y2);
 
 				LoadDxDefinitionDetailBlock(g_dxName,'#summary1');
 				LoadPrioritisedSummaryLeft(cleanedJSON,'#summary2');
 				CreatePerformanceSentimentCategories(geoFeatures,'#summary3');
-
+//console.log(cleanedJSON);
 				var DataRangeProfileJSON = TransformDistributionJSON(cleanedJSON);
 				var DistrProfileJSON = TransformHistogramDistributionJSON(cleanedJSON);
-
-				//console.log(LegendCols);
-				//console.log(DataRangeProfileJSON);
 
 				createBarChartValueRange('ValueRangeProfile',1100,300,JSON.parse(JSON.stringify(DataRangeProfileJSON)),OUname,g_dxName);
 				createHistogramDataDistributionWithStdDevBands('HistogramProfile',1100,300,JSON.parse(JSON.stringify(DistrProfileJSON)),OUname,iDecLim,LegendCols,LegendGrades,g_iStDev,iScaleAbsLow,iScaleAbsHigh,g_RegAvg);
@@ -1392,10 +1356,10 @@ console.log(geoFeatures);
 
 					for(i = 0; i < myData.rows.length; i++) {
 
-							if (myData.rows[i][0] == g_dxUID)
-							{
-							
-								var sCol = ( ( OUname == myData.metaData.items[myData.rows[i][1]].name) ? '#df8100' : '#244ea0') ;
+							if (myData.rows[i][0] == g_dxUID) {
+
+								//var sCol = ( ( OUname == myData.metaData.items[myData.rows[i][1]].name) ? '#df8100' : '#244ea0') ;
+								var sCol = ( ( OUname == myData.metaData.items[myData.rows[i][1]].name) ? '#df8100' : getColor(parseFloat(myData.rows[i][2]))) ;
 
 								sReturn += '{';
 								sReturn += '"Data" : "' + g_dxName + '",';
@@ -1660,7 +1624,7 @@ console.log(geoFeatures);
 					{
 						sReturn += ((myData.headers[i].name == 'ou') ? '<td style="height:25px;vertical-align:middle;">&nbsp;<b>Significant</b>&nbsp;</td>' : ((myData.headers[i].	name != 'dx') ? '<td style="height:25px;vertical-align:middle;text-align:right;">' + dxTypeName + '&nbsp;</td>' : ''));
 					}
-					
+
 					for(i = 0; i < myData.rows.length; i++) {
 						
 						if (myData.rows[i] != undefined)
@@ -1752,7 +1716,7 @@ console.log(geoFeatures);
 						}
 					}
 				}
-				
+
 				function CreatePerformanceSentimentCategories(geoFeatures,sDestination){
 
 					var i;
@@ -2231,21 +2195,18 @@ console.log(geoFeatures);
 				}
 
 				function getColor(d) {
-				
-					/*if (LegendCols == undefined){
-						return '#6B85E3';
-					} else */
-					{
 
-						for (var i = 0; i < LegendCols.length; i++) {
-							// test > current value && less than next value
+					for (var i = 0; i < LegendCols.length; i++) {
+						if (i >= LegendCols.length){
+							
+						} else {
 							if ((parseFloat(d) >= parseFloat(LegendRangeTestValues[i])) && (parseFloat(d) < parseFloat(LegendRangeTestValues[i+1]))){
 								return LegendCols[i];
 								break;
 							}
 						}
-
 					}
+
 				}
 			}
 
