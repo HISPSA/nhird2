@@ -149,7 +149,7 @@ var myAppData = [];
 var g_Instances;
 var g_dpk = ''; 
 var g_prtcl = (window.location.origin).split('://')[0];
-var g_PGurl = '1ae0bd70.ngrok.io';
+var g_PGurl = '277b5ac0.ngrok.io';
 var g_sourceDB = ''; 
 
 var g_pingOn = true;
@@ -3046,14 +3046,18 @@ function initialiseMarqueeContextMenu(){
 
 		}
 
-		/* 'FILLER' row */
-		var Intr = document.createElement('tr');
-		Intb.appendChild(Intr);
+		if (Intb != undefined){
 
-		var Intd = document.createElement('td');
-		Intd.setAttribute('style', "padding:2px;height:14px;");
-		Intd.setAttribute('colspan',3);
-		Intr.appendChild(Intd);
+			/* 'FILLER' row */
+			var Intr = document.createElement('tr');
+			Intb.appendChild(Intr);
+
+			var Intd = document.createElement('td');
+			Intd.setAttribute('style', "padding:2px;height:14px;");
+			Intd.setAttribute('colspan',3);
+			Intr.appendChild(Intd);
+
+		}
 
 		$(((g_Meta_dxObject == 'indicators') ? '#IndCount' : ((g_Meta_dxObject == 'dataElements') ? '#DeCount' : '#OuCount'))).html(meta_data.length);
 
@@ -3121,10 +3125,24 @@ function initialiseMarqueeContextMenu(){
 	function openZscoreMap(dxUid){
 
 		var Inst = getCurrentInstanceAttribute('organisationUnits');
+		var sUrl = 'templates/leaflet_zscore.htm?source=' + getCurrentInstance().uid + '&ou=' + Inst.id + '&dx=' + dxUid + '&pe=' + g_pe + '&oulevel=3&pname=' + Inst.name;
 
-		var Url = 'templates/leaflet_zscore.htm?source=' + getCurrentInstance().uid + '&ou=' + Inst.id + '&dx=' + dxUid + '&pe=' + g_pe + '&oulevel=3&pname=' + Inst.name;
+		console.log(sUrl);
+		
+		/*w2popup.load({ 
+			url		  : sUrl, 
+			width     : 1000,
+			height    : 10000,
+			overflow  : 'hidden',
+			color     : '#333',
+			speed     : '0.3',
+			opacity   : '1',
+			modal     : false,
+			showClose : true,
+			showMax   : true
+		})*/
 
-		window.open (Url);
+		window.open (sUrl);
 
 	}
 

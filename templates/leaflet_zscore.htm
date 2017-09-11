@@ -1359,7 +1359,7 @@ $(document).ready(
 							if (myData.rows[i][0] == g_dxUID) {
 
 								//var sCol = ( ( OUname == myData.metaData.items[myData.rows[i][1]].name) ? '#df8100' : '#244ea0') ;
-								var sCol = ( ( OUname == myData.metaData.items[myData.rows[i][1]].name) ? '#df8100' : getColor(parseFloat(myData.rows[i][2]))) ;
+								var sCol = ( ( OUname == myData.metaData.items[myData.rows[i][1]].name) ? '#df8100' : 'rgb(80, 115, 180)') ; //getDistributionColor(parseFloat(myData.rows[i][2]))) ;
 
 								sReturn += '{';
 								sReturn += '"Data" : "' + g_dxName + '",';
@@ -2192,6 +2192,21 @@ $(document).ready(
 							break;
 						}
 					}
+				}
+
+				function getDistributionColor(d) {
+
+					for (var i = 0; i < LegendCols.length; i++) {
+						if (i >= LegendCols.length){
+							
+						} else {
+							if ((parseFloat(d) >= parseFloat(LegendRangeTestValues[i])) && (parseFloat(d) < parseFloat(LegendRangeTestValues[i+1]))){
+								return LegendCols[i];
+								break;
+							}
+						}
+					}
+
 				}
 
 				function getColor(d) {

@@ -1403,7 +1403,7 @@
 	for(i = 0; i < iRows; i++) {
 
 		iCounter = iCounter + 1
-		
+
 		if (bCustomFill){
 
 			sFill = myData[i].color;
@@ -1413,17 +1413,19 @@
 			iColCodeGroupCounter = iColCodeGroupCounter + 1;
 
 			if (iColCodeGroupCounter > iColCodeGroupCount){
+
 				iColCodeGroup = iColCodeGroup + 1;
 				colorR = (iColCodeGroup * 40);
 				colorG = (iColCodeGroup * 30);
 				colorB = (iColCodeGroup * 20);
 				iColCodeGroupCounter = 0;
-				
+
 				if (myData[i].ou != myOU){
 					sFill = "rgba(" + (0 + colorR) + "," + (48 + colorG) + "," + (120 + colorB) + ",1);"
 				} else {
 					sFill = "#FF9500";
 				}
+
 			}
 
 		}
@@ -1435,8 +1437,7 @@
 
 		if (myData[i].ou != myOU){
 			rectElement.setAttribute("style", "stroke-opacity:1;stroke:" + sFill + ";fill:" + sFill + ";");
-		}
-		else{
+		} else {
 			rectElement.setAttribute("style", "stroke-opacity:2;stroke:#F5F5F5;fill:" + sFill + ";stroke-dasharray: 1");
 		}
 
