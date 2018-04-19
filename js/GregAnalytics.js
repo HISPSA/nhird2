@@ -5,7 +5,7 @@
  * Creation Date: 2015-04-30
  */
 
-  function legendtoSVG(LegArr,sTitle,iGrowthSentiment,currentLayerOpacity){
+  function legendtoSVG(LegArr,sTitle,iGrowthSentiment,currentLayerOpacity,bTransparent){
 
 	var iRect = 18; // 30 for circles
 	var iTxt = 33; // 36 for circles
@@ -16,7 +16,7 @@
 	svgElement.setAttribute("xmlns:xlink", "http://www.w3.org/1999/xlink");
 	svgElement.setAttribute("width", ( ((g_dxName.length * 6) < 140) ? 140 : (g_dxName.length * 6)) + 'px');
 	svgElement.setAttribute("height", (10 + ((LegArr.length +1) * iRowHeight)) + 'px');
-	svgElement.setAttribute("onclick", "javascript: this.childNodes[0].childNodes[0].style.opacity = ( (this.childNodes[0].childNodes[0].style.opacity == 1) ? this.childNodes[0].childNodes[0].style.opacity = 0 : this.childNodes[0].childNodes[0].style.opacity = 1);");
+	svgElement.setAttribute("onclick", "javascript: this.childNodes[0].childNodes[0].style.opacity = ( (this.childNodes[0].childNodes[0].style.opacity == 1) ? this.childNodes[0].childNodes[0].style.opacity = 0 : this.childNodes[0].childNodes[0].style.opacity = 1);g_bLegendOnMapTransparent=((g_bLegendOnMapTransparent)?0:1)");
 
 	// BOUNDING BG BOX
 	var svgGroupBox;
@@ -29,7 +29,7 @@
 		rectElement.setAttribute("y", 0);
 		rectElement.setAttribute("rx", 4); //rounded x axis borders
 		rectElement.setAttribute("ry", 4); //rounded y axis borders
-		rectElement.setAttribute("style", "fill:rgb(255, 255, 255);opacity:1;");
+		rectElement.setAttribute("style", "fill:rgb(255, 255, 255);opacity:" + ((bTransparent)?0:1) + ";");
 		rectElement.setAttribute("width", ( ((g_dxName.length * 6) < 140) ? 140 : (g_dxName.length * 6)) + 'px');
 		rectElement.setAttribute("height", (10 + ((LegArr.length +1) * iRowHeight)) + 'px');
 		svgGroupBox.appendChild(rectElement);
@@ -74,7 +74,7 @@
 		//rectElement.setAttribute("r", 9);
 		rectElement.setAttribute("x", "6");
 		rectElement.setAttribute("y", (4+iRect));
-		rectElement.setAttribute("style", "fill:" + myBg + ";opacity:" + currentLayerOpacity + ";");
+		rectElement.setAttribute("style", "fill:" + myBg + ";opacity:" + currentLayerOpacity + ";stroke:#fff;stroke-width:1;");
 		rectElement.setAttribute("width", 18);
 		rectElement.setAttribute("height", 18);
 		svgGroup.appendChild(rectElement);
@@ -90,7 +90,7 @@
 		xLabel.textContent = (((parseFloat(iFrom) < 0) ? '0 ' : parseFloat(iFrom).toFixed(2).replace('.00','')));
 		xLabel.setAttribute("x", 39);
 		xLabel.setAttribute("y", (2+iTxt));
-		xLabel.setAttribute("style", "stroke: none; font-size: 12px;font-weight:400;font-family:Roboto,sans-serif;");
+		xLabel.setAttribute("style", "stroke: none; font-size: 11px;font-weight:400;font-family:Roboto,sans-serif;");
 		svgGroup.appendChild(xLabel);
 
 		// HIPHEN BLOCK
@@ -118,14 +118,14 @@
 		xLabel.textContent = ((parseFloat(iTo) != '') ? parseFloat(iTo).toFixed(2).replace('.00','') : '');
 		xLabel.setAttribute("x", 89);
 		xLabel.setAttribute("y", (2+iTxt));
-		xLabel.setAttribute("style", "stroke: none; font-size: 12px;font-weight:400;font-family:Roboto,sans-serif;");
+		xLabel.setAttribute("style", "stroke: none; font-size: 11px;font-weight:400;font-family:Roboto,sans-serif;");
 		svgGroup.appendChild(xLabel);
-		
+
 		iRect += iRowHeight;
 		iTxt += iRowHeight;
 
 	}
-	
+
 	return (svgElement.outerHTML);
 
   }
@@ -1304,6 +1304,8 @@
 	svgGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
 	svgElement.appendChild(svgGroup);
 
+	//console.log('iColCodeGroupCount: ' + iColCodeGroupCount + ' iRows: ' + iRows + ' iColCodeGroupCount: ' + Math.ceil(iRows/iColCodeGroupCount));
+
 	if (iYmax > (iYtemp + (iYtemp*0.5))){
 
 		/* y-RANGE VALUE LINE: for cases where Max value is more than 50% above NEAREST 'ROUNDED DOWN' value*/
@@ -1378,6 +1380,7 @@
 	xLabel.setAttribute("style", "stroke: none; font-size: " + Math.floor(CHART_BOUNDARY_SPACE * (2/3)) + "px;");
 	svgGroup.appendChild(xLabel);
 
+	
 	/* ZERO VALUE LINE */
 	var pathElement;
 	pathElement = document.createElementNS("http://www.w3.org/2000/svg", "line");
@@ -1387,6 +1390,7 @@
 	pathElement.setAttribute("y2", Math.floor((h-100) - CHART_BOUNDARY_SPACE)+1);
     pathElement.setAttribute("style", "stroke:#000000;stroke-width:1;opacity: 0.95;");
 	svgGroup.appendChild(pathElement);
+
 
 	/* ZERO VALUE TEXT LABEL */
 	var xLabel;
@@ -1403,7 +1407,7 @@
 	for(i = 0; i < iRows; i++) {
 
 		iCounter = iCounter + 1
-
+		
 		if (bCustomFill){
 
 			sFill = myData[i].color;
@@ -1413,19 +1417,17 @@
 			iColCodeGroupCounter = iColCodeGroupCounter + 1;
 
 			if (iColCodeGroupCounter > iColCodeGroupCount){
-
 				iColCodeGroup = iColCodeGroup + 1;
 				colorR = (iColCodeGroup * 40);
 				colorG = (iColCodeGroup * 30);
 				colorB = (iColCodeGroup * 20);
 				iColCodeGroupCounter = 0;
-
+				
 				if (myData[i].ou != myOU){
 					sFill = "rgba(" + (0 + colorR) + "," + (48 + colorG) + "," + (120 + colorB) + ",1);"
 				} else {
 					sFill = "#FF9500";
 				}
-
 			}
 
 		}
@@ -1437,7 +1439,8 @@
 
 		if (myData[i].ou != myOU){
 			rectElement.setAttribute("style", "stroke-opacity:1;stroke:" + sFill + ";fill:" + sFill + ";");
-		} else {
+		}
+		else{
 			rectElement.setAttribute("style", "stroke-opacity:2;stroke:#F5F5F5;fill:" + sFill + ";stroke-dasharray: 1");
 		}
 
@@ -1479,6 +1482,7 @@
 				lnElement.appendChild(title);
 				
 				svgGroup.appendChild(lnElement);
+				
 
 				// top horizontal NUMERATOR bar
 				var lnElement;
@@ -1516,12 +1520,12 @@
 				lnElement.setAttribute("y1", ((h - CHART_BOUNDARY_SPACE) - (myData[i].value * iYvariable) - (iBarWidth/4)));
 				lnElement.setAttribute("y2", ((h - CHART_BOUNDARY_SPACE) - (myData[i].value * iYvariable) + (iBarWidth/4)));
 				lnElement.setAttribute("style", "stroke:#333333;fill:none;stroke-dasharray: 5,5");
-
+				
 				svgGroup.appendChild(lnElement);
 
 			}
-
-		} else {
+		}
+		else{
 
 				var xLabel;
 				xLabel = document.createElementNS("http://www.w3.org/2000/svg", "text");
@@ -1531,10 +1535,37 @@
 				xLabel.setAttribute("style", "stroke: none; fill: " + sFill + "; font-weight: 800; font-size: " + Math.floor(CHART_BOUNDARY_SPACE * (3/5)) + "px;");
 				xLabel.setAttribute("transform", "rotate(90, " + ((CHART_BOUNDARY_SPACE*2) + (i * iBarWidth) - (iBarWidth/10)) + ", " + (((h-100) - CHART_BOUNDARY_SPACE) - (iYmin * iYvariable)) + ")");
 				svgGroup.appendChild(xLabel);
-
+/*
+			var xLabel;
+			xLabel = document.createElementNS("http://www.w3.org/2000/svg", "text");
+			xLabel.setAttribute("x", (CHART_BOUNDARY_LEFT_PADDING_XLABEL + (CHART_BOUNDARY_SPACE*2)) + (i * iBarWidth) * 0.65);
+			xLabel.setAttribute("y",(((h-150) - CHART_BOUNDARY_SPACE) - (iYmin * iYvariable)) - (iBarWidth/2));
+			xLabel.textContent = (myData[i].ou);
+			xLabel.setAttribute("style", "stroke: none; fill: #ffffff; font-weight:400; font-size: " + Math.floor(CHART_BOUNDARY_SPACE * (3/4)) + "px;");
+			xLabel.setAttribute("transform", "rotate(90, " + ((CHART_BOUNDARY_SPACE*2) + (i * iBarWidth) - (iBarWidth/10)) + ", " + (((h-100) - CHART_BOUNDARY_SPACE) - (iYmin * iYvariable)) + ")");
+			svgGroup.appendChild(xLabel);
+*/
+/*
+			lnElement.setAttribute("x1",((CHART_BOUNDARY_SPACE*2)) + (i * iBarWidth)+(iBarWidth/2));
+			lnElement.setAttribute("y1", ((h - CHART_BOUNDARY_SPACE) - (myData[i].value * iYvariable) - (iBarWidth/4)));
+			lnElement.setAttribute("x2", ((CHART_BOUNDARY_SPACE*2)) + (i * iBarWidth)+(iBarWidth/2));
+			lnElement.setAttribute("y2", ((h - CHART_BOUNDARY_SPACE) - (myData[i].value * iYvariable) + (iBarWidth/4)));
+			lnElement.setAttribute("style", "stroke:#0D00FF;fill:none;");
+			
+			var xLabel;
+			xLabel = document.createElementNS("http://www.w3.org/2000/svg", "text");
+			xLabel.setAttribute("x", (CHART_BOUNDARY_SPACE*2) + (i * iBarWidth)-(CHART_BOUNDARY_SPACE/4));
+			xLabel.setAttribute("y",(h) - (CHART_BOUNDARY_SPACE * (1/4)));
+			xLabel.textContent = parseFloat(myData[i].value).toFixed(2).replace('.00','');
+			xLabel.setAttribute("style", "stroke: none; font-size: " + (CHART_BOUNDARY_SPACE * (1/2)) + "px;");
+			svgGroup.appendChild(xLabel);
+*/
 		}
 
+
+
 	}
+	
 
 }
 
