@@ -1371,9 +1371,9 @@
 
 	/* X-AXIS LABEL */
 	var xLabel;
-	var sLabelText = xAxisLabel;
+	var sLabelText = ((xAxisLabel!=undefined)?xAxisLabel:'');
 	xLabel = document.createElementNS("http://www.w3.org/2000/svg", "text");
-	xLabel.setAttribute("x", (CHART_BOUNDARY_SPACE - (xAxisLabel.toString().length / 0.5)));
+	xLabel.setAttribute("x", (CHART_BOUNDARY_SPACE - (sLabelText.toString().length / 0.5)));
 	xLabel.setAttribute("y", (((h - 50) - CHART_BOUNDARY_SPACE) - ((iYtemp/2) * iYvariable) + 15));
 	xLabel.textContent = (sLabelText);
 	xLabel.setAttribute("transform", "rotate(270," + (CHART_BOUNDARY_SPACE - (iYtemp.toString().length / 1)) + "," + (((h - 50) - CHART_BOUNDARY_SPACE) - ((iYtemp/2) * iYvariable)) + ")");
@@ -1465,7 +1465,7 @@
 
 			lnElement.setAttribute("x1",(CHART_BOUNDARY_LEFT_PADDING_XLABEL + (CHART_BOUNDARY_SPACE*2)) + (i * iBarWidth)+(iBarWidth/2));
 			lnElement.setAttribute("x2", (CHART_BOUNDARY_LEFT_PADDING_XLABEL + (CHART_BOUNDARY_SPACE*2)) + (i * iBarWidth)+(iBarWidth/2));
-			
+
 			if (bNumProp){
 
 				var myLineHeight = (((h-100) - CHART_BOUNDARY_SPACE) * parseFloat(myData[i].numproportion) / 100);
@@ -1480,9 +1480,8 @@
 				title = document.createElementNS("http://www.w3.org/2000/svg", "title");
 				title.textContent = (myData[i].numproportion);
 				lnElement.appendChild(title);
-				
+
 				svgGroup.appendChild(lnElement);
-				
 
 				// top horizontal NUMERATOR bar
 				var lnElement;
