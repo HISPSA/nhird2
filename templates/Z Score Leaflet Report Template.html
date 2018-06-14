@@ -95,8 +95,8 @@
 
 	<!-- <script src="http://nhird.health.gov.za/Dhis14_NIDS13/aspcode/scripts/GregAnalytics.js"></script> -->
 	
-	<!-- <script src="https://rawgit.com/HISPSA/nhird2/master/js/GregAnalytics.js"></script> -->
-	<script src="https://nhird.health.gov.za/DHIS14_NIDS13/aspcode/scripts/GregAnalytics.js"></script>
+	<script src="https://rawgit.com/HISPSA/nhird2/master/js/GregAnalytics.js"></script> 
+	<!-- <script src="https://nhird.health.gov.za/DHIS14_NIDS13/aspcode/scripts/GregAnalytics.js"></script>-->
 
 	<script type="text/javascript">
 
@@ -480,8 +480,6 @@ $(document).ready(
 		var sInnerJ = $.ajax({url:sInnerUrl, async: false}).responseText; 
 		var sInnerJSON = JSON.parse(sInnerJ);
 		var cleanedJSON = ((ValueRange.length > 0) ? ProcessValueRangeCriteria(sInnerJSON) : sInnerJSON);		
-		var DataRangeProfileJSON = TransformDistributionJSON(cleanedJSON);
-		var DistrProfileJSON = TransformHistogramDistributionJSON(cleanedJSON);
 		var sDownloadOptions = '&nbsp;&nbsp;<span style="color:#404040;">Download data to:</span>&nbsp;&nbsp;<a href="../api/analytics.csv?dimension=dx:' + dxUID + dxElements + '&filter=pe:' + peFilter + '&dimension=ou:LEVEL-' + (OUoutputLevel) + ';' + OUid + '&displayProperty=NAME&outputIdScheme=NAME">CSV</a>&nbsp;&nbsp;';
 		sDownloadOptions += '&nbsp;&nbsp;|&nbsp;&nbsp;';
 		sDownloadOptions += '<a href="../api/analytics.xls?dimension=dx:' + dxUID + dxElements + '&filter=pe:' + peFilter + '&dimension=ou:LEVEL-' + (OUoutputLevel) + ';' + OUid + '&displayProperty=NAME&outputIdScheme=NAME">XLS</a>&nbsp;&nbsp;';
@@ -648,6 +646,8 @@ $(document).ready(
 		iScaleAbsHigh = ((parseFloat(iScaleHigh) < 0) ? Math.floor(parseFloat(iScaleHigh)) : Math.ceil(parseFloat(iScaleHigh)));
 
 		var iRange = (Math.abs(iScaleAbsHigh) + Math.abs(iScaleAbsLow));
+		var DataRangeProfileJSON = TransformDistributionJSON(cleanedJSON);
+		var DistrProfileJSON = TransformHistogramDistributionJSON(cleanedJSON);
 
 		/* BUILD SUMMARY TITLE BLOCK containing indicator name, region, period and stat overview */
 		var DxOverview = '';
@@ -1186,14 +1186,14 @@ $(document).ready(
 								sReturn += '"ou": "' + objNames[myData.rows[i][p]].name + '"';
 							}
 							else{
-								if (myData.headers[p].name == 'value')
+								//if (myData.headers[p].name == 'value')
 								{
 									sReturn += '"' + myData.headers[p].name + '" : "' + myData.rows[i][p] + '"';
 								}
-								else
+								/*else
 								{
 									sReturn += '"Data" : "' + objNames[myData.rows[i][p]].name + '"';
-								}
+								}*/
 							}
 							if (p != myData.headers.length-1)
 							{
@@ -1395,10 +1395,11 @@ $(document).ready(
 							if (myData.headers[p].name == 'ou'){
 								sReturn += '"ou": "' + objNames[myData.rows[i][p]].name + '"';
 							} else {
-								if (myData.headers[p].name == 'value'){
-									sReturn += '"' + myData.headers[p].name + '" : "' + myData.rows[i][p] + '"';
+								if (myData.headers[p].name == 'numerator'){
+									sReturn += '"' + myData.headers[p].name + '" : "' + myData.rows[i][p] + '",';
+									sReturn += '"numproportion" : "' + (myData.rows[i][p] / iGTnum * 100) + '"';
 								} else {
-									sReturn += '"Data" : "' + objNames[myData.rows[i][p]].name + '"';
+									sReturn += '"' + myData.headers[p].name + '" : "' + myData.rows[i][p] + '"';
 								}
 							}
 							if (p != myData.headers.length-1){
@@ -1428,12 +1429,13 @@ $(document).ready(
 				sReturn += '"Data" : "' + dxName + '",';
 				sReturn += '"ou": "' + getParameterByName('pname') + '",';
 				sReturn += '"value": "' + getParameterByName('dxval') + '"';
+				//iGTnum
 				sReturn += '}';
 			}
 
 			sReturn = (sReturn.substr(sReturn.length - 1) == ',' ? sReturn.substring(0, sReturn.length-1) : sReturn);
 			sReturn += ']';
-
+console.log(sReturn);
 			newJ = JSON.parse(sReturn);
 			newJ.sort(sort_by('value', false, parseFloat));
 
